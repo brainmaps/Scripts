@@ -1,0 +1,56 @@
+
+
+dirname='D:\_MOUSE_PROJECTOME\ORDERING\Ordered\';
+dirname='D:\ORDERING\';
+
+fns=dir([dirname '*.xls']);
+chemlist=[];
+k=0;
+
+for i=1:size(fns,1)
+    [a,b,raw] = xlsread([dirname fns(i,1).name]);
+    
+    j=1;
+    k=k+1;
+    chemlist{k,1}=regexprep( b{21,2} ,'(\<\w)','${upper($1)}');
+    while (length(b{21+j,2}) > 1)
+        k=k+1;
+        chemlist{k,1}=regexprep( b{21+j,2}  ,'(\<\w)','${upper($1)}');
+        chemlist2=sortrows(unique(chemlist))
+        j=j+1;
+    end
+end
+            
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
