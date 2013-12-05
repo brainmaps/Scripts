@@ -1,5 +1,5 @@
 %% Creates a feature matrix
-asdf
+
 %% User input
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Comment out if not desired
