@@ -1,4 +1,4 @@
-function cim = jh_vs_subtractGaussianStructElement(im, sigma, offset, vesicleMin, vesicleMax, debug, nameRun, nameParam)
+function cim = jh_vs_subtractGaussianStructElement(im, sigma, diffCutOff, debug, nameRun, nameParam)
 %UNTITLED Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -7,12 +7,12 @@ tic;
 
 im = im - min(min(min(im)));
 im = im / max(max(max(im)));
-imRef = im;
-imRef(im < vesicleMin) = vesicleMin;
-imRef(im > vesicleMax) = vesicleMax;
+% imRef = im;
+% imRef(im < vesicleMin) = vesicleMin;
+% imRef(im > vesicleMax) = vesicleMax;
 im = 1 - im;
-imRef = 1-imRef;
-offset = 1-offset;
+% imRef = 1-imRef;
+% offset = 1-offset;
 
 [n1,n2,n3] = size(im);
 n = n1*n2*n3;
@@ -48,9 +48,9 @@ clear maskLin;
 maskEachPos = permute(maskEachPos, [2,3,4,1]);
 % Multiply each Gaussian kernel value with the intensity of its
 % corresponding position
-for i = 1:size(maskEachPos,4)
-    maskEachPos(:,:,:,i) = maskEachPos(:,:,:,i) .* (imRef-offset) + offset;
-end
+% for i = 1:size(maskEachPos,4)
+%     maskEachPos(:,:,:,i) = maskEachPos(:,:,:,i) .* (imRef-offset) + offset;
+% end
 clear imRef;
 
 % To avoid the border problen all impossible indices are set to 1
@@ -58,6 +58,15 @@ nhEachPos(nhEachPos <= 0) = 1;
 nhEachPos(nhEachPos > n) = 1;
 % Create a matrix with the image intensities at each position
 nhImValues = im(nhEachPos);
+% Normalize each position with the central pixel intensity
+for i = 1:sizeKernel
+    if i ~= round(sizeKernel/2)
+        nhImValues(:,:,:,i) = nhImValues(:,:,:,i) ./ nhImValues(:,:,:,round(sizeKernel/2));
+    end
+end
+nhImValues(:,:,:,round(sizeKernel/2)) = 1;
+% Correct Inf
+nhImValues(nhImValues == Inf) = 0;
 clear nhEachPos;
 
 fprintf('     - Kernel extended! \n');
@@ -70,6 +79,7 @@ for i = 1:sizeKernel;
 end
 clear diffImKernel im;
 
+cim(cim > diffCutOff) = diffCutOff;
 cim = cim-min(min(min(cim)));
 cim = cim/max(max(max(cim)));
 
