@@ -124,7 +124,7 @@ cube.hMaxDivGF = jh_vs_hMax(cube.divGF, 0.5, 18, true, debug, nameRun, 'hMaxDivG
 %cube.nv2HMaxDivGF = jh_vs_neighborhoodVar(cube.hMaxDivGF, 2, 2, anisotropic, debug, nameRun, 'nv2HMaxDivGF');
 %cube.hMaxNv2HMaxDivGF = jh_vs_hMax(cube.nv2HMaxDivGF, 0.2, 18, false, debug, nameRun, 'hMaxNv2HMaxDivGF');
 
-cube.gaussDivGF = gaussian(cube.divGF, 1, 1, 0, 0, debug, nameRun, 'gaussDifGF');
+cube.gaussDivGF = jh_vs_subtractGaussianStructElement(cube.divGF, 1, 1, 0, 0, debug, nameRun, 'gaussDifGF');
 
 cube.segHMaxDivGF = (1-cube.gaussDivGF) .* (cube.hMaxDivGF);
 if debug
