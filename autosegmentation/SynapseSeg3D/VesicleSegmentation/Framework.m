@@ -45,16 +45,13 @@ cube.normInvData = 1 - cube.normData;
 
 %% Define a subset for debug purposes
 
-%{
+% from = 1;
+% to = 10;
+% 
+% cube.data = cube.data(from:to, from:to, from:to);
+% cube.normData = cube.normData(from:to, from:to, from:to);
+% cube.normInvData = cube.normInvData(from:to, from:to, from:to);
 
-from = 1;
-to = 100;
-
-cube.data = cube.data(from:to, from:to, from:to);
-cube.normData = cube.normData(from:to, from:to, from:to);
-cube.normInvData = cube.normInvData(from:to, from:to, from:to);
-
-%}
 
 %% For anisotropic voxels
 
@@ -119,17 +116,17 @@ end
 
 [cube.GF, cube.magGF] = jh_vs_imageGradient(im, 1, debug, nameRun, 'magGF');
 cube.divGF = jh_vs_divergence(cube.GF, 2, debug, nameRun, 'divGF');
-cube.hMaxDivGF = jh_vs_hMax(cube.divGF, 0.5, 18, true, debug, nameRun, 'hMaxDivGF');
+% cube.hMaxDivGF = jh_vs_hMax(cube.divGF, 0.5, 18, true, debug, nameRun, 'hMaxDivGF');
 %cube.nm2HMaxDivGF = jh_vs_neighborhoodMean(cube.hMaxDivGF, 2, 2, anisotropic, debug, nameRun, 'nm2HMaxDivGF');
 %cube.nv2HMaxDivGF = jh_vs_neighborhoodVar(cube.hMaxDivGF, 2, 2, anisotropic, debug, nameRun, 'nv2HMaxDivGF');
 %cube.hMaxNv2HMaxDivGF = jh_vs_hMax(cube.nv2HMaxDivGF, 0.2, 18, false, debug, nameRun, 'hMaxNv2HMaxDivGF');
 
-cube.gaussDivGF = jh_vs_subtractGaussianStructElement(cube.divGF, 1, 1, 0, 0, debug, nameRun, 'gaussDifGF');
+cube.gaussDivGF = jh_vs_subtractGaussianStructElement(cube.divGF, 1, 5, debug, nameRun, 'gaussDifGF');
 
-cube.segHMaxDivGF = (1-cube.gaussDivGF) .* (cube.hMaxDivGF);
-if debug
-    saveImageAsTiff3D(cube.segHMaxDivGF, [nameRun '_' 'segHMaxDivGF' '.TIFF']);
-end
+% cube.segHMaxDivGF = (1-cube.gaussDivGF) .* (cube.hMaxDivGF);
+% if debug
+%     saveImageAsTiff3D(cube.segHMaxDivGF, [nameRun '_' 'segHMaxDivGF' '.TIFF']);
+% end
 
 cube.segDivGF = (1-cube.gaussDivGF) .* (1-cube.divGF);
 if debug
