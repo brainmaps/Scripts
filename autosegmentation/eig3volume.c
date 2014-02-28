@@ -11,6 +11,9 @@
  *
  *
  */
+ 
+/* Copyright (c)  Dirk-Jan Kroon
+ * http://www.mathworks.de/matlabcentral/fileexchange/24409-hessian-based-frangi-vesselness-filter */
 
 /* Eigen decomposition code for symmetric 3x3 matrices, copied from the public
  * domain Java Matrix library JAMA. */
