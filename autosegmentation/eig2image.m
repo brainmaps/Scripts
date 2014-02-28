@@ -1,4 +1,7 @@
 function [Lambda1,Lambda2,Ix,Iy]=eig2image(Dxx,Dxy,Dyy)
+% Copyright (c)  Dirk-Jan Kroon
+% http://www.mathworks.de/matlabcentral/fileexchange/24409-hessian-based-frangi-vesselness-filter
+%
 %Dxx=fxx;Dxy=fxy;Dyy=fyy;
 % This function eig2image calculates the eigen values from the
 % hessian matrix, sorted by abs value. And gives the direction
