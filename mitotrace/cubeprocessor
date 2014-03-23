@@ -1,0 +1,57 @@
+function cubeprocessor(frompath, topath, applyfunction, onwhat)
+%CUBEMAKER Processes a Knossos cube directory at frompath. Makes a new
+%directory at topath and saves the processed cubes there as cube_output.
+%onwhat is a string specifying if the function acts on the onwhat = 'cube' or just the
+%onwhat = 'coordinates'. onwhat defaults to 'cube' when omitted.
+%   [NOT TESTED] Cuboid ready
+
+%default arguments
+if ~exist('onwhat', 'var')
+    onwhat = 'cube';
+end
+
+%Fetch supercube dimensions
+wherewasi = pwd;
+cd(frompath)
+
+flistX=dir(frompath);
+flistY=dir([frompath filesep 'x0000']);
+flistZ=dir([frompath filesep 'x0000' filesep 'y0000']);
+
+numX=sum(arrayfun(@(x) sum(x.isdir),flistX))-2;
+numY=sum(arrayfun(@(x) sum(x.isdir),flistY))-2;
+numZ=sum(arrayfun(@(x) sum(x.isdir),flistZ))-2;
+
+cd(wherewasi)
+
+%initialize mainloop
+for J = 1:numY
+    for I = 1:numX
+        for K = 1:numZ
+            cube_output = [];
+            %load in a cube only when onwhat is set to cubes
+            if ~strcmpi(onwhat, 'coordinates')
+                cube_output = loadcube([J I K], frompath);
+            end
+            
+            %if a function is given, get processing
+            if exist('applyfunction', 'var')
+                if strcmpi('cube', onwhat)
+                    cube_output = applyfunction(cube_output);
+                elseif strcmpi('coordinates', onwhat)
+                    cube_output = applyfunction([J I K], frompath);
+                else
+                    warning('onwhat string not recognized, function will not be applied.');
+                end
+            end
+            %make directory and write to file
+            access_string = [filesep, 'x', num2str(I-1, '%04d'), filesep, 'y', num2str(J-1, '%04d'), filesep, 'z', num2str(K-1, '%04d')];
+            mkdir([topath, access_string])
+            wherewasi = pwd;
+            cd([topath, access_string]);
+            save mitomap_output cube_output
+            cd(wherewasi)
+        end
+    end
+end
+end
