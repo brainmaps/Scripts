@@ -1,0 +1,30 @@
+function catarray = robustvertcat(array1, array2, fill)
+%ROBUSTCAT Function to robustly vertically concatenate 2 arrays. Fill
+%          defaults to NaN when omitted.
+%   For instance: robustvertcat([1, 2], [3, 4, 5]) = [1, 2, fill; 3, 4, 5]
+%   [TESTED AND WORKING]
+
+%set default value for fill
+if ~exist('fill', 'var')
+    fill = NaN;
+end
+
+[sizy1, sizx1] = size(array1);
+[sizy2, sizx2] = size(array2);
+
+if sizx2 > sizx1
+   catarray = [[array1, fill*ones(sizy1, sizx2 - sizx1)]; array2];
+   return
+end
+
+if sizx2 < sizx1
+    catarray = [array1; [array2, fill*ones(sizy2, sizx1 - sizx2)]];
+    return
+end
+
+if sizx2 == sizx1
+    catarray = [array1; array2];
+    return
+end
+
+end
