@@ -1,0 +1,593 @@
+function stitch(frompath, topath)
+%STITCH Syncs labels of a prelabled knossos cube directory (with individually labelled cubes)
+%(in path frompath) and saves results in an existing blank dataset (in path
+%topath). Inputs can be omitted. 
+%   WARNING: Make a copy of all data in frompath and topath before
+%            execution.
+
+%Extract dimensions of the supercube
+%Assign default paths
+if ~exist('frompath', 'var')
+    frompath = 'C:\Users\nasim\Documents\MATLAB\Cubes\BOMAX-512px-cube_mag1-output-labeled_binary';
+end
+
+if ~exist('topath', 'var')
+    topath = 'C:\Users\nasim\Documents\MATLAB\Cubes\BOMAX-512px-cube_mag1-output-labeled_binary-global';
+end
+
+%Count directories to extract dimension
+wherewasi = pwd;
+cd(frompath);
+flistX=dir(frompath);
+flistY=dir([frompath filesep 'x0000']);
+flistZ=dir([frompath filesep 'x0000' filesep 'y0000']);
+numX=sum(arrayfun(@(x) sum(x.isdir),flistX))-2;
+numY=sum(arrayfun(@(x) sum(x.isdir),flistY))-2;
+numZ=sum(arrayfun(@(x) sum(x.isdir),flistZ))-2;
+cd(wherewasi);
+%initialize a global counter
+globalcounter = 0;
+
+%Cube selection for primary pass. Begin master loop.
+for Y = 1:numY
+    for X = 1:numX
+        for Z = 1:numZ
+            'in stitch: primary pass cube'
+            [Y X Z]
+            %Load selected cube to memory as ppcube (Primary Pass CUBE)
+            ppcube = loadcube([Y, X, Z], frompath);
+            
+            %just to make sure
+            if all(all(all(ppcube == 0)))
+                continue
+            end
+            
+            %Loop over connected components in ppcube
+            while (~(max(max(max(ppcube))) == 0))
+                
+                %increment globalcounter
+                globalcounter = globalcounter + 1;
+                globalcounter
+                %pick first connected component of id ccid
+                ccid = max(max(max(ppcube)));
+%                ccid
+                %initialize an 'invitation list' of all cubes to which the
+                %cc of ccid extends. The first 3 elements of a given row are the
+                %cube coordinates; the remaining elements are the id's of
+                %cc's in that particular cube to which ccid in ppcube extends.
+                
+                %Invite the host (ppcube):
+                invlist = [Y, X, Z, ccid];
+                
+                %loop over all guests in invlist. But first initialize a
+                %flag to mark if ppcube has already been processed
+                firstcubeprocessed = false;
+                while (~isempty(invlist))
+                    %load last guest in invlist
+                    currcubecoord = invlist(end, 1:3);
+                    currcubeccids = invlist(end, 4:end);
+                    currcube = loadcube(currcubecoord, frompath);
+                    
+                    %update invlist. The following function registers the
+                    %present guest (i.e. deletes it from invlist)
+                    %and checks if it invites more guests. This makes sure
+                    %that invlist eventually depletes to update the while
+                    %loop and does the boundary analysis. 
+                    %For instance: If ccid is confined
+                    %within ppcube, invlist is immediately depleted and the
+                    %while loop breaks.
+                    'invlist before update'
+                    invlist
+                    invlist = updateinvlist(invlist, [numY, numX, numZ], frompath);
+                    'back in stitch'
+                    %special treatment for the ppcube to update the while
+                    %loop
+                    if (all(currcubecoord == [Y, X, Z]) && ~firstcubeprocessed)
+                        firstcubeprocessed = true;
+                        'move cc'
+                        currcubecoord
+                        ppcube = movecc(currcubeccids(1), ppcube, currcubecoord, globalcounter, frompath, topath);
+                    else
+                        %loop over all ccids in currcube and move cc to topath
+                        %begin sloppy programming
+                        for k = currcubeccids(~isnan(currcubeccids) & ~(currcubeccids == 0))
+                        %end sloppy programming
+                            'move cc'
+                            currcubecoord
+                            currcube = movecc(k, currcube, currcubecoord, globalcounter, frompath, topath);
+                        end
+                    end
+                end
+                'invlist depleted'
+                end
+            end
+        end
+    end
+end
+
+%-----------------------------------------------
+
+function newinvlist = updateinvlist(invlist, maxppcoord, loadpath)
+%UPDATEINVLIST updates invlist. 
+    %The following function registers the
+    %last row (i.e. deletes it from invlist)
+    %and checks if it invites more guests. This makes sure
+    %that invlist eventually depletes to update the while
+    %loop in stitch.m and does the boundary analysis. 
+    %For instance: If ccid is confined
+    %within ppcube, invlist is immediately depleted and the
+    %while loop breaks. See inline documentation for moar.
+ 
+    
+    %take measurements and load guest
+    currcubecoord = invlist(end, 1:3);
+    currcubeccids = invlist(end, 4:end);
+    currcube = loadcube(currcubecoord, loadpath);
+    [sizy, sizx, sizz] = size(currcube);
+    
+    %delete last element
+    invlist(end, :) = [];
+    
+    invlist
+    %Begin boundary analysis
+    'boundary analysis on'
+    [currcubecoord, currcubeccids]
+    
+    reginfo = regionprops(currcube, 'BoundingBox');
+    
+    %loop over all ccids in currcube
+    %begin sloppy programming
+    for k = currcubeccids(~isnan(currcubeccids) & ~(currcubeccids == 0))
+    %end sloppy programming
+        %MATLAB won't parse. :/
+        try
+            x = reginfo(k).BoundingBox(1);
+            y = reginfo(k).BoundingBox(2);
+            z = reginfo(k).BoundingBox(3);
+            dimx = reginfo(k).BoundingBox(4);
+            dimy = reginfo(k).BoundingBox(5);
+            dimz = reginfo(k).BoundingBox(6);
+        catch err
+            if ~exist('reginfo(k)', 'var')
+                warnmsg = ['Cube at coordinates ', num2str(currcubecoord), 'was found empty while handling ccid ', num2str(currcubeccids), '. The loop continues.'];
+                warning(warnmsg);
+                continue
+            else
+                rethrow(err);
+            end
+        end
+       %save boundary cases to an 'EXPansion MATrix'
+       
+       expmat = false(3,3,3);
+       
+       %Looking top down at a cube:
+       %go left
+       if x < 1
+           expmat(2,1,2) = true;
+       end
+       
+       %go right 
+       if x + dimx > sizx
+           expmat(2,3,2) = true;
+       end
+       
+       %forwards
+       if y < 1
+           expmat(1,2,2) = true;
+       end
+       
+       %backwards
+       if y + dimy > sizy
+           expmat(3, 2, 2) = true;
+       end
+       
+       %go up
+       if z < 1
+           expmat(2,2,1) = true;
+       end
+       
+       %go down
+       if z + dimz > sizz
+           expmat(2,2,3) = true;
+       end
+       
+       %loop over expmat to build a list of coordinates to go next 
+       catlist = [];
+       ccidlist = [];
+       'in updateinvlist'
+       k
+       expmat
+       for l = 1:numel(expmat)
+           if expmat(l)
+               l
+               [I1, I2, I3] = ind2sub([3, 3, 3], l);
+               I1 = I1 - 2; I2 = I2 - 2; I3 = I3 - 2;
+               gonext = double(currcubecoord) + [I1, I2, I3];
+               
+               %check if gonext is a valid coordinate
+               if all(gonext > 0) &&  all(gonext <= maxppcoord)
+                   %concatenate gonext to catlist
+                   %NOT SO FAST
+                   %catlist = [catlist; gonext];
+                   
+                   %debugger
+                   gonext
+                   %-------
+                   
+                   
+                   %look for connected cc's in gonext
+                   m1vec = [I1, I2, I3] == -1; %m1vec: Minus 1 VECtor
+                   p1vec = [I1, I2, I3] == 1;
+                   
+%                    %debugger
+%                    'explore coordinate'
+%                    gonext
+                   
+                   nextcube = uint32(loadcube(gonext, loadpath));
+                   if any(m1vec)
+                       %go forward: true
+                       if m1vec(1) == 1
+                           %load the correct edge
+                           currcubebinedge = reshape(uint32(currcube(1, :, :) == k), [sizx, sizx]);
+                           %"AND" with the correct edge of the next cube
+                           %(which must not be binary) and concatenate
+                           %unique results to ccid.
+                           
+%                            %debugger
+%                            'forward'
+%                            unique(currcubebinedge.*reshape(nextcube(end,:,:), [sizx, sizx]))
+%                            %--------
+                           
+                           %generates a list of shared ccids & zeros. If it
+                           %only contains zero, no ccid's are shared, even
+                           %though the boundary analysis returned positive.
+                           %This is the case when a cube has already been
+                           %visited. 
+                           sharedccids = unique(currcubebinedge.*reshape(nextcube(end,:,:), [sizx, sizx]))';
+                           %if 0 is not the only element in sharedccids,
+                           %then concatenate with catlist and ccidlist
+                           if ~all(sharedccids == 0)
+                               catlist = [catlist; gonext];
+                               ccidlist = robustvertcat(ccidlist, sharedccids, NaN);
+                           end
+                           
+                       end
+                       
+                       %go left: true
+                       if m1vec(2) == 1
+                           %load the correct edge
+                           currcubebinedge = reshape(uint32(currcube(:, 1, :) == k), [sizx, sizx]);
+                           %"AND" with the correct edge of the next cube
+                           %(which must not be binary) and concatenate
+                           %unique results to ccid.
+                           
+%                            %debugger
+%                            'left'
+%                            unique(currcubebinedge.*reshape(nextcube(:,end,:), [sizx, sizx]))
+%                            %--------
+                           %generates a list of shared ccids & zeros. If it
+                           %only contains zero, no ccid's are shared, even
+                           %though the boundary analysis returned positive.
+                           %This is the case when a cube has already been
+                           %visited. 
+                           sharedccids = unique(currcubebinedge.*reshape(nextcube(:,end,:), [sizx, sizx]))';
+                           %if 0 is not the only element in sharedccids,
+                           %then concatenate with catlist and ccidlist
+                           if ~all(sharedccids == 0)
+                               catlist = [catlist; gonext];
+                               ccidlist = robustvertcat(ccidlist, sharedccids, NaN);
+                           end
+                                                      
+                       end
+                       
+                       %go up: true
+                       if m1vec(3) == 1
+                           %load the correct edge
+                           currcubebinedge = reshape(uint32(currcube(:, :, 1) == k), [sizx, sizx]);
+                           %"AND" with the correct edge of the next cube
+                           %(which must not be binary) and concatenate
+                           %unique results to ccid.
+                           
+%                            %debugger
+%                            'up'
+%                            unique(currcubebinedge.*reshape(nextcube(:,:,end), [sizx, sizx]))
+%                            %--------
+                              %generates a list of shared ccids & zeros. If it
+                           %only contains zero, no ccid's are shared, even
+                           %though the boundary analysis returned positive.
+                           %This is the case when a cube has already been
+                           %visited. 
+                           sharedccids = unique(currcubebinedge.*reshape(nextcube(:,:,end), [sizx, sizx]))';
+                           %if 0 is not the only element in sharedccids,
+                           %then concatenate with catlist and ccidlist
+                           if ~all(sharedccids == 0)
+                               catlist = [catlist; gonext];
+                               ccidlist = robustvertcat(ccidlist, sharedccids, NaN);
+                           end
+
+                       end
+                   end
+                   
+                   if any(p1vec)
+                       %go backwards: true
+                       if p1vec(1) == 1
+                           %load the correct edge
+                           currcubebinedge = reshape(uint32(currcube(end, :, :) == k), [sizx, sizx]);
+                           %"AND" with the correct edge of the next cube
+                           %(which must not be binary) and concatenate
+                           %unique results to ccid.
+                           
+%                             %debugger
+%                            'back'
+%                            unique(currcubebinedge.*reshape(nextcube(1,:,:), [sizx, sizx]))
+%                            %--------
+                           
+                            %generates a list of shared ccids & zeros. If it
+                           %only contains zero, no ccid's are shared, even
+                           %though the boundary analysis returned positive.
+                           %This is the case when a cube has already been
+                           %visited. 
+                           sharedccids = unique(currcubebinedge.*reshape(nextcube(1,:,:), [sizx, sizx]))';
+                           %if 0 is not the only element in sharedccids,
+                           %then concatenate with catlist and ccidlist
+                           if ~all(sharedccids == 0)
+                               catlist = [catlist; gonext];
+                               ccidlist = robustvertcat(ccidlist, sharedccids, NaN);
+                           end
+                           
+                       end
+                       
+                       %go right: true
+                       if p1vec(2) == 1
+                           %load the correct edge
+                           currcubebinedge = reshape(uint32(currcube(:, end, :) == k), [sizx, sizx]);
+                           %"AND" with the correct edge of the next cube
+                           %(which must not be binary) and concatenate
+                           %unique results to ccid.
+                           
+%                             %debugger
+%                            'right'
+%                            unique(currcubebinedge.*reshape(nextcube(:,1,:), [sizx, sizx]))
+%                            %--------
+                           
+                            %generates a list of shared ccids & zeros. If it
+                           %only contains zero, no ccid's are shared, even
+                           %though the boundary analysis returned positive.
+                           %This is the case when a cube has already been
+                           %visited. 
+                           sharedccids = unique(currcubebinedge.*reshape(nextcube(:,1,:), [sizx, sizx]))';
+                           %if 0 is not the only element in sharedccids,
+                           %then concatenate with catlist and ccidlist
+                           if ~all(sharedccids == 0)
+                               catlist = [catlist; gonext];
+                               ccidlist = robustvertcat(ccidlist, sharedccids, NaN);
+                           end
+                           
+                       end
+                       
+                       %go down: true
+                       if p1vec(3) == 1
+                           %load the correct edge
+                           currcubebinedge = reshape(uint32(currcube(:, :, end) == k), [sizx, sizx]);
+                           %"AND" with the correct edge of the next cube
+                           %(which must not be binary) and concatenate
+                           %unique results to ccid.
+                           
+%                            %debugger
+%                            'down'
+%                            unique(currcubebinedge.*reshape(nextcube(:,:,1), [sizx, sizx]))
+%                            %--------
+                            
+                           %generates a list of shared ccids & zeros. If it
+                           %only contains zero, no ccid's are shared, even
+                           %though the boundary analysis returned positive.
+                           %This is the case when a cube has already been
+                           %visited. Reshape to a row vector: 
+                           sharedccids = unique(currcubebinedge.*reshape(nextcube(:,:,1), [sizx, sizx]))';
+                           
+                           
+                           %if 0 is not the only element in sharedccids,
+                           %then concatenate with catlist and ccidlist
+                          
+                           if ~all(sharedccids == 0)
+                               catlist = [catlist; gonext];
+                               ccidlist = robustvertcat(ccidlist, sharedccids, NaN);
+                           end
+                           
+                       end
+                   end
+               end
+           else
+               continue
+           end
+       end
+       
+        %getting rid of 0's in ccidlist: the first column is gonna be all
+        %zeros anyway. 
+        if ~isempty(ccidlist)
+            if all(ccidlist(:, 1) == 0)
+                ccidlist(:, 1) = [];
+            end
+        end
+        
+        %generate final matrix to concatenate with invlist
+        
+        catmat = [catlist, ccidlist];
+        %debugger
+        catmat
+        %--------
+        
+        %concatenate
+        invlist = robustvertcat(invlist, catmat);   
+    end
+    
+    %Optimize invlist to minimize the number of cube visits
+    invlist = optimizeinvlist(invlist); 
+    
+    %debugger
+    'invlist'
+    invlist
+    %--------
+    
+    
+    %return
+    newinvlist = invlist;
+    
+end
+
+%-----------------------------------------------
+
+function cube = loadcube(coordinates, basepath)
+%LOADCUBE Fetches knossos cube from coordinates [y, x, z] given a basepath (WITHOUT trailing filesep!). x, y, z >= 1  
+%   basepath defaults to
+%   C:\Users\nasim\Documents\MATLAB\Cubes\BOMAX-512px-cube_mag1-output-labeled_binary
+%   when omitted. 
+%   [tested and working]
+%   [CERTAIN] Cuboid ready
+
+if ~exist('basepath', 'var')
+    basepath = 'C:\Users\nasim\Documents\MATLAB\Cubes\BOMAX-512px-cube_mag1-output-labeled_binary';
+end
+
+%to make coordinates compatible with file structure
+coordinates = coordinates - 1;
+
+%record pwd and change directory to load data
+wherewasi = pwd;
+access_string = [filesep, 'x', num2str(coordinates(2), '%04d'), filesep, 'y', num2str(coordinates(1), '%04d'), filesep, 'z', num2str(coordinates(3), '%04d')];
+cd([basepath, access_string]);
+
+%-------DEBUGGER----------
+%disp([basepath, access_string])
+%-------------------------
+
+%load data
+load('mitomap_output', 'cube_output');
+
+%back to business
+cd(wherewasi);
+cube = cube_output;
+
+end
+
+%---------------------------------------------------
+
+function cube = movecc(ccid, fromcube, cubecoordinates, globalcounter, frompath, topath)
+%MOVECC Moves a connected component (of label ccid) from an input cube (fromcube and on file)
+%with coordinates cubecoordinates to a mirror directory of base path topath. topath
+%defaults to [C:\Users\nasim\Documents\MATLAB\Cubes\BOMAX-512px-cube_mag1-output-labeled_binary-global] when omitted. 
+%   Return value cube is the input fromcube with all components with label ID
+%   ccid stripped. The CC is labeled globalcounter in destination. 
+%   ------------
+%   [CRITICAL10] This function assumes an existing mirror directory at topath.
+%   [CRITICAL15] The mirror directory at topath must actually be a mirror of the directory at frompath,
+%   or the function fails. 
+%   [CRITICAL20] Size of fromcube and cube_output at the mirror directory should be
+%              equal
+%   [CRITICAL30] Make sure that the frompath in this function equals
+%   basepath in loadcube.m
+%   [TESTED AND WORKING, w00t!]
+%   [NEW] Get rid of ccid not only in fromcube, but also in directory frompath.
+%   [NOTE] The function argument fromcube isn't really necessary...
+
+
+if ~exist('topath', 'var')
+    topath = 'C:\Users\nasim\Documents\MATLAB\Cubes\BOMAX-512px-cube_mag1-output-labeled_binary-global';
+end
+
+if ~exist('frompath', 'var')
+    frompath = 'C:\Users\nasim\Documents\MATLAB\Cubes\BOMAX-512px-cube_mag1-output-labeled_binary';
+end
+
+%check if there are labels in cube id'ed ccid [UNCOMMENT TO ACTIVATE]
+% if ~any(any(any(fromcube == ccid)))
+%     error('movecc:noccidincube', 'no labels found with id ccid')
+% end
+
+%isolate all pixels of label ccid
+cubeofccidsbin = fromcube==ccid; 
+
+%convert isolated binary to uint32 and label with global counter
+cubeofccids = globalcounter*uint32(cubeofccidsbin);
+
+%load data from [DEFAULT OUTPATH]. For more documentation, see loadcube.m:
+%to make cubecoordinates compatible with file structure
+cubecoordinates = cubecoordinates - 1;
+
+%record pwd and change directory to load data
+wherewasi = pwd;
+access_string = [filesep, 'x', num2str(cubecoordinates(2), '%04d'), filesep, 'y', num2str(cubecoordinates(1), '%04d'), filesep, 'z', num2str(cubecoordinates(3), '%04d')];
+cd([topath, access_string]);
+
+%load cube as cube_output
+load('mitomap_output', 'cube_output');
+
+%make sure all pixels in cube_output corresponding to label ccid in
+%fromcube are set to zero
+cube_output(cubeofccidsbin) = 0;
+
+%convert cube_output to uint32 if it isn't already
+if ~isa(cube_output, 'uint32')
+    cube_output = uint32(cube_output);
+end
+
+%append to cube output by simple matrix addition.  
+cube_output = uint32(cube_output) + cubeofccids;
+
+%cube_output to back where it belongs
+save('mitomap_output','cube_output');
+
+
+%get rid of all cc's id'ed ccid from fromcube
+fromcube(cubeofccidsbin) = 0;
+
+%NEW:
+%write fromcube to file as cube_output
+cd([frompath, access_string]);
+cube_output = fromcube;
+save('mitomap_output', 'cube_output');
+%END OF NEWS
+
+%back to business
+cd(wherewasi);
+
+%return fromcube to update the copy already in memory
+cube = fromcube;
+
+end
+
+%-----------------------------------------------------------------------
+
+function catarray = robustvertcat(array1, array2, fill)
+%ROBUSTCAT Function to robustly vertically concatenate 2 arrays. Fill
+%          defaults to NaN when omitted.
+%   For instance: robustvertcat([1, 2], [3, 4, 5]) = [1, 2, fill; 3, 4, 5]
+%   [TESTED AND WORKING]
+
+%set default value for fill
+if ~exist('fill', 'var')
+    fill = NaN;
+end
+
+[sizy1, sizx1] = size(array1);
+[sizy2, sizx2] = size(array2);
+
+if sizx2 > sizx1
+   catarray = [[array1, fill*ones(sizy1, sizx2 - sizx1)]; array2];
+   return
+end
+
+if sizx2 < sizx1
+    catarray = [array1; [array2, fill*ones(sizy2, sizx1 - sizx2)]];
+    return
+end
+
+if sizx2 == sizx1
+    catarray = [array1; array2];
+    return
+end
+
+end
+
+%-------------------------------------------------------------------------
+
