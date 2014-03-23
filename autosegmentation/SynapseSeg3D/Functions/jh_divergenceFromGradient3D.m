@@ -1,29 +1,67 @@
-function Idiv = jh_divergenceFromGradient3D(gradient, sigma)
+function Idiv = jh_divergenceFromGradient3D(gradient, sigma, varargin)
 %divergenceFromGradient calculates the divergence of a gradient field
 %
 % SYNOPSIS
 %   Idiv = divergenceFromGradient(gradient, sigma)
+%   Idiv = divergenceFromGradient(gradient, sigma, mult)
+%   Idiv = divergenceFromGradient(gradient, sigma, mult, anisotropic)
 %
 % INPUT
 %   gradient: gradient field for calculation of the divergence
 %   sigma: Gaussian sigma used for calculation of the derivatives
+%   mult: Factor to determine the kernel size for the Gaussian; the kernel
+%       size is calculated by mult*sigma+1
+%       default: mult = 3
+%   anisotropic: specifies anisotropic voxels; e.g., anisotropic = [1 1 3]
+%       default: anisotropic = [1 1 1]
 %
 % OUTPUT
 %   Idiv: divergence
 
+%% Check input
+
+% Defaults
+mult = 3;
+anisotropic = [1 1 1];
+% Check input
+if ~isempty(varargin)
+    % varargin is not empty
+    % First input: mult
+    mult = varargin{1};
+    % Second input: for anisotropic voxels
+    if length(varargin) == 2
+        anisotropic = varargin{2};
+    end
+end
+
+%% 
+
 % Make kernel coordinates
-mult = 1;
-[X,Y,Z] = ndgrid(-round(mult*sigma):round(mult*sigma));
+r_1 = floor(-mult*sigma/anisotropic(1)); r_end = ceil(mult*sigma/anisotropic(1));
+c_1 = floor(-mult*sigma/anisotropic(2)); c_end = ceil(mult*sigma/anisotropic(2));
+d_1 = floor(-mult*sigma/anisotropic(3)); d_end = ceil(mult*sigma/anisotropic(3));
+[r,c,d] = ndgrid(r_1:r_end, c_1:c_end, d_1:d_end);
+r = r * anisotropic(1);
+c = c * anisotropic(2);
+d = d * anisotropic(3);
 
-Dx = -(X.*exp(-(X.^2 + Y.^2 + Z.^2)/(2*sigma^2)))/sigma^3;
-Dy = -(Y.*exp(-(X.^2 + Y.^2 + Z.^2)/(2*sigma^2)))/sigma^3;
-Dz = -(Z.*exp(-(X.^2 + Y.^2 + Z.^2)/(2*sigma^2)))/sigma^3;
+% Gauss and its derivatives:
+% G = 1/((2*pi*sigma^2)^(1/2))^3 * exp(-(x^2+y^2+z^2)/(2*sigma^2))
+% Gx = -x/((2*pi)^(3/2)*sigma^5) * exp(-(x^2+y^2+z^2)/(2*sigma^2))
+% Gxx = (x^2-sigma^2) / ((2*pi)^(3/2)*sigma^7) * exp(-(x^2+y^2+z^2)/(2*sigma^2))
 
-Gx = imfilter(gradient(:,:,:,1),Dx,'conv','symmetric' );
-Gy = imfilter(gradient(:,:,:,2),Dy,'conv','symmetric' );
-Gz = imfilter(gradient(:,:,:,3),Dz,'conv','symmetric' );
+% Calculate Gaussian filter mask
+Dx = -r/((2*pi)^(3/2)*sigma^5) .* exp(-(r.^2+c.^2+d.^2)/(2*sigma^2));
+Dy = -c/((2*pi)^(3/2)*sigma^5) .* exp(-(r.^2+c.^2+d.^2)/(2*sigma^2));
+Dz = -d/((2*pi)^(3/2)*sigma^5) .* exp(-(r.^2+c.^2+d.^2)/(2*sigma^2));
+
+% Convolve the gradient directions
+Fx = imfilter(gradient(:,:,:,1),Dx,'conv','symmetric' );
+Fy = imfilter(gradient(:,:,:,2),Dy,'conv','symmetric' );
+Fz = imfilter(gradient(:,:,:,3),Dz,'conv','symmetric' );
 
 % Calculate the divergence
-Idiv = Gx + Gy + Gz;
+Idiv = Fx + Fy + Fz;
 
 end
+
