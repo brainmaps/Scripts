@@ -1,0 +1,36 @@
+function catarray = robustlinereplace(line, array, inrow, fill)
+%ROBUSTLINEHORCAT Concatenates line (a row vector) to the inrow'th row of
+%an array, and fills gaps with fill. Fill defaults to NaN when omitted. 
+%   [TESTED AND WORKING]
+
+%assign default value to fill
+if ~exist('fill', 'var')
+    fill = NaN;
+end
+
+%take measurements
+[sizy1, sizx1] = size(array);
+[~, sizx2] = size(line);
+
+if sizx2 > sizx1
+    array = [array, fill*ones(sizy1, sizx2 - sizx1)];
+    array(inrow, :) = line; 
+    catarray = array;
+    return
+end
+
+if sizx2 < sizx1
+    line = [line, fill*ones(1, sizx1 - sizx2)]; 
+    array(inrow, :) = line;
+    catarray = array;
+    return
+end
+
+if sizx2 == sizx1
+    array(inrow, :) = line;
+    catarray = array;
+    return
+end
+
+end
+
