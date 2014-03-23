@@ -1,0 +1,91 @@
+function mitosd3D = mitosegv5(a, p)
+%MITOSEGV4 Takes in a 3D cube a, tries to segment mitochondrias and cleans dust. 
+%p: limiting parameter while binarizing. Recommended: p = 0.1
+%   Todo: clip out PSDs
+%         [DONE IN V3] use bwmorph clean and fill to clean some of the mess
+%         [DONE IN V4] use bwlabel to get rid of all patches with area <= 4
+%         and fill remaining holes
+%         [DONE IN V5] added support for 3D datacubes
+
+%BEGIN V5
+%calculate size of the dataset
+[~, ~, sizz] = size(a);
+
+%initialize a working matrix to optimize efficiency
+mitomat = zeros(size(a));
+
+%loop over all planes and save results
+for pl = 1:sizz
+    %BEGIN V1
+    %convert to double, just to make sure...
+    ad = im2double(a(:,:,pl));
+
+    %apply custom filter 
+    ae = applyhypaddfilter(ad, 0.1); % t = 0.1 as default value for hypaddfilter
+
+    % gaussian twice
+    GaussK = [0.050000000000000 0.100000000000000 0.050000000000000;0.100000000000000 0.400000000000000 0.100000000000000;0.050000000000000 0.100000000000000 0.050000000000000];
+    aeconv = conv2(ae, GaussK);
+    aeconv2 = conv2(aeconv, GaussK);
+
+    % filter out everything below p. p = 0.1 works reasonably well having applied
+    % hypaddfilter.
+    mitobin = aeconv2<p;
+
+    % BEGIN V2
+    % convert to double and convolve twice with a kernel
+    ker = [0,0,0.25,0,0;0,0,0,0,0;0.25,0,0,0,0.25;0,0,0,0,0;0,0,0.25,0,0];
+    doublemitobin = im2double(mitobin);
+    mitoconv = conv2(doublemitobin, ker);
+    mitoconv2 = conv2(mitoconv, ker);
+
+    %filter out everything below 0.5 and return
+    mitosd2 = mitoconv2>0.5;
+
+    %BEGIN V3
+    %clean twice, fill thrice. 
+    mitosd3 = bwmorph(bwmorph(mitosd2, 'clean', 2), 'fill', 3);
+
+    %BEGIN V4
+    %accquire labeled image cc
+    cc = bwlabel(mitosd3, 8); 
+
+    %get statistics 
+    stat = regionprops(mitosd3, 'Area');
+
+    %Filter by area
+    %initialize an empty image
+    mitosd4 = zeros(size(mitosd3));
+
+    %retrieve areas for all regions in cc. Add all regions with area > 4 to
+    %mitosd4
+    for n=1:size(stat)
+        if stat(n).Area > 4
+            mitosd4 = or(mitosd4, cc==n);
+        end
+    end
+
+    %get rid of the 5px padding (probably an artefact of convolution)
+    mitosd4 = mitosd4(7:end-6, 7:end-6);
+
+    %fill holes and finalze
+    mitosd4 = imfill(mitosd4, 'holes');
+    mitomat(:,:,pl) = mitosd4;
+    
+end
+
+%return
+mitosd3D = mitomat;
+
+end
+
+function ae = applyhypaddfilter(a, t)
+%APPLYHYPADDFILTER Apply hypadd filter with a given threshold value 0<t<0.5. 
+%   output: ae := hypadd(hypadd(a, 1-t), hypadd(a, t))
+ae = hypadd(hypadd(a, 1-t), hypadd(a, t));
+end
+
+function s = hypadd(x1, x2) %#ok<*STOUT>
+%Adds along f = (1/2)(tanh(x)+1). Returns s = f(f^-1(X1) + f^-1(X2)).  
+s = (0.5)*(tanh(atanh(2*x1-1)+atanh(2*x2-1))+1);
+end
