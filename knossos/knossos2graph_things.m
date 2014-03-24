@@ -8,6 +8,11 @@ function [things, thingIDs, comments]= knossos2graph_things(fn)
 %nodecolor=.5;
 %fn='D:\tracing.045.nml';
 %fn='D:\interareal.nml';
+%fn='D:\BOMAX-512px-cube-uhaeusler.083.nml'
+
+%%
+%fn='D:\20130410.membrane.striatum.10x10x30.synapses2-uhaeusler.013.nml';
+%fn='D:\BOMAX-512px-cube-uhaeusler.083.nml'
 
 scalefactor=1;
 
@@ -111,7 +116,10 @@ for i=1:size(fn_things,2)
          %   str2double(edgetemptarget{1,1}(9:length(edgetemptarget{1,1})-1))];
          edgesource=str2double(edgetempsource{1,1}(9:length(edgetempsource{1,1})-1));
          edgetarget = str2double(edgetemptarget{1,1}(9:length(edgetemptarget{1,1})-1));
+         try
          edges=[edges; nodes2(ismember(nodes(:,1),edgesource),1)  nodes2(ismember(nodes(:,1),edgetarget),1) ];
+         catch
+         end
          %ismember(things{1}.nodes(:,1),25)
         
     end
