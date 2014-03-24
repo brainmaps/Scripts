@@ -2,9 +2,7 @@ function importAndPlotKnossosFile(fn,range)
 % fn=knossos file
 % range is optional 3-tuple specifying volume dimensions in voxels
 %fn='D:\BOMAX-512px-cube-uhaeusler.083.nml';
-if isempty(range)
-    range=[512,512,512];
-end
+
 [things, thingIDs, comments]= knossos2graph_things(fn);
 figure
 plotted_things=0;
@@ -18,7 +16,9 @@ for i=1:length(things)
     catch
     end
 end
-xlim([1 range(1)]);ylim([1 range(2)]);zlim([1 range(3)]);
+if ~isempty(range)
+    xlim([1 range(1)]);ylim([1 range(2)]);zlim([1 range(3)]);
+end
 xlabel('X'),ylabel('Y'),zlabel('Z'),axis square
 hold off
 disp(['Plotted things: ' num2str(plotted_things) ',  Total things: ' num2str(length(things))]);
