@@ -16,10 +16,7 @@ for i=1:length(things)
     catch
     end
 end
-try
-    xlim([1 range(1)]);ylim([1 range(2)]);zlim([1 range(3)]);
-catch
-end
+try,xlim([1 range(1)]);ylim([1 range(2)]);zlim([1 range(3)]);catch,end
 xlabel('X'),ylabel('Y'),zlabel('Z'),axis square
 hold off
 disp(['Plotted things: ' num2str(plotted_things) ',  Total things: ' num2str(length(things))]);
