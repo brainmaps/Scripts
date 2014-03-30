@@ -1,0 +1,207 @@
+function [retrzl, retmlt, retorlab, retmtl] = checkseg(manualtracingpath, basepath, echo)
+%CHECKSEG Validates a segmentation algorithm by comparing with manual
+%tracings and evaluating a quality index. manualtracingpath is the path to
+%a Knossos .nml and basepath is one to the globally labeled binary dataset.
+%echo specifies  if the results are to be echoed while function execution
+%and can be set to true or false. It defaults to true when omitted. 
+%   [RETURN]
+%   rzl: Vector of ratios of zeros to labels. Should ideally be zero.
+%   mlt: Multiple labels in a thing. mlt(thing, :) returns all labels found
+%        in thing (with a bunch of NaNs, which could be gotten rid of with find). 
+%   orlab: List of orphan labels, i.e. labels not found in any of the things.  
+%   mtl: Multiple things passing through a label. mtl(label) = things
+%        through label. 
+%   [WARNING] Not cuboid ready
+%   [WARNING] Not supercuboid ready
+
+
+
+%%
+%----INITIALIZATION----
+
+%default value handling
+if ~exist('echo', 'var')
+    echo = true;
+end
+
+%initialize a labelsinthing array to contain the labels of all connected
+%components in which a given node in the corresponding thingid lies. For
+%example: if labelsinthing(42, :) were to return a row [5 5 5 5 0 0 NaN NaN
+%... NaN], it would mean that 4 of the nodes in thingid 42 were found
+%inside the connected component labeled 5 and the remaining 2 in empty
+%space. Note that the labels are global labels as obtained from
+%stitch.m, so specifying a cube is not necessary. If you do really need 
+%your cubes, run mitostats.m.
+%The NaNs are mere placeholders and meant to be ignored.
+labelsinthing = [];
+
+%load in nodes from manualtracingpath. Sampling factor 1 with
+%knossos2graph, replace with a function to sample from edges. 
+[nodes, ~, ~] = knossos2graph(manualtracingpath);
+
+%nodes is a n-by-7 array and the 7th column contains the thingid.
+thingarray = nodes(:,7);
+%and the 2nd, 3rd and 4th columns the global node coordinates
+globcoord = nodes(:,2:4);
+
+%make sure all coordinates are compatible with the directory at basepath
+%by mending every node poking out of the dataset. To begin,
+%fetch supercube dimensions:
+[numY, numX, numZ] = fetchSupercubeDimensions(basepath);
+%load a sample cube from basepath to determine cubesize
+samplecube = loadcube([1 1 1], basepath);
+%take measurements
+[csy, ~, ~] = size(samplecube);
+%delete samplecube
+clear samplecube
+%replace everything larger than csy*numY with csy*numY
+globcoord(globcoord > (csy*numY)) = csy*numY;
+
+
+
+%convert global coordinates to cube coordinates and coordinates in cube
+[cubecoordinates, coordinatesincube] = global2cubecoordinates(globcoord);
+
+
+%%
+%----ACQUISITION----
+
+%find unique rows in cubecoordinates
+uicc = unique(cubecoordinates, 'rows', 'stable');
+
+%determine the y-size of unique in cubecoordinates (uicc) to loop over
+[sizyuicc, ~] = size(uicc);
+
+%loop
+for r = 1:sizyuicc
+    %load labeled cube and convert to double for compatibility with
+    %robustlinereplace
+    labcube = double(loadcube(uicc(r, :), basepath));
+    
+    %compile a list of row indices to find all instances of the current row in question
+    %(uicc(r,:)) in cubecoordinates
+    rowindx = find(ismember(cubecoordinates, uicc(r, :), 'rows') == 1);
+    
+    %loop over row indices and add to the final list
+    for rowid = rowindx'
+        %load local coordinates of the current row
+        currow = coordinatesincube(rowid, :);
+        %determine the corresponding label in labcube
+        label = labcube(currow(1), currow(2), currow(3));
+        %load thingid
+        currthing = thingarray(rowid);
+        %retrieve the relevant row in labelsinthings and concatenate.
+        %retrieverow returns [] if the row indexed currthing doesn't
+        %exist. 
+        rowinlit = retrieverow(currthing, labelsinthing);
+        %get rid of all NaNs
+        rowinlit = rowinlit(~isnan(rowinlit));
+        %concatenate with label
+        rowinlit = [rowinlit, label];
+        %insert rowinlit back in to labelsinthing
+        labelsinthing = robustlinereplace(rowinlit, labelsinthing, currthing, NaN);
+    end
+end
+
+%%
+%----ANALYSIS----
+%tests for oversegmentation: multiple things containing identical labels (1.1)
+%                            orphan labels (1.2)
+%tests for undersegmentation: multiple labels on a thing (1.3)
+%                             ratio of zeros to labels (1.4)
+
+%--------------------------
+%(1.4)
+rzl = []; %smaller rzl => mitochondria detected
+uita = unique(thingarray);
+for thing = uita'
+    %access labels in thing
+    labrow = labelsinthing(thing, :);
+    %get rid of all NaNs in labrow
+    labrow = labrow(~isnan(labrow));
+    %count zeros
+    zer = numel(labrow(labrow == 0));
+    %calculate rzl and insert at rzl(thing)
+    rzl = robustlinereplace([zer/(numel(labrow)-zer)], rzl, thing, NaN);
+end
+
+if echo
+    disp('RZL vector:');
+    disp(rzl(~isnan(rzl)));
+end
+
+%--------------------------
+%(1.3)
+mlt = [];
+for thing = uita'
+    %access labels in thing
+    labrow = labelsinthing(thing, :);
+    %get rid of all NaNs
+    labrow = labrow(~isnan(labrow));
+    %find uniques in labrow
+    uilr = unique(labrow);
+    %find anomalies and report to mlot
+    if numel(uilr(~(uilr == 0))) > 1
+        mlt = robustlinereplace(uilr(~(uilr == 0)), mlt, thing, NaN); 
+    end
+end
+
+%--------------------------
+%(1.2)
+orlab = [];
+%generate a list of all labels in the dataset (this might take a while)
+%initialize
+allab = [];
+
+%loop over
+for  J = 1:numY
+    for I = 1:numX
+        for K = 1:numZ
+            cube = loadcube([J I K], basepath);
+            uic = unique(cube);
+            allab = [allab; uic(~(uic==0))];
+        end
+    end
+end
+allab = unique(allab);
+%check if a label in allab is missing in labelsinthing
+for label = allab'
+    f = find(labelsinthing == label, 1);
+    if isempty(f)
+        orlab = [orlab; label];
+    end
+end
+
+if echo
+    disp('List of orphan labels:');
+    disp(orlab);
+end
+
+%--------------------------
+%(1.1)
+%mtl(label) = things in which label was found. 
+mtl = [];
+for label = allab'
+    f = find(labelsinthing == label);
+    if isempty(f)
+        continue
+    end
+    dupthings = [];
+    for linind = f'
+    [indy, ~] = ind2sub(size(labelsinthing), linind);
+    dupthings = [dupthings; indy];
+    end
+    uidt = unique(dupthings);
+    if numel(uidt) > 1
+        uidt = uidt';
+        mtl = robustlinereplace(uidt, mtl, label, NaN);
+    end
+end
+
+%%
+%return
+retrzl = rzl;
+retmlt = mlt;
+retorlab = orlab;
+retmtl = mtl;
+end
