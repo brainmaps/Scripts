@@ -62,7 +62,7 @@ end
 
 rg = cast(regions, prefType);
 
-for i = i:iterations
+for i = 1:iterations
     
     rgDil = imdilate(rg, nh);
     if strcmp(type, 's')
