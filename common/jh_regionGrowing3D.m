@@ -78,7 +78,7 @@ for i = 1:iterations
     elseif strcmp(type, 'ne')
         rgDil(mask == thresh) = 0;
     end
-    rgDil(rg > 1) = rg(rg > 1);
+    rgDil(rg > 0) = rg(rg > 0);
     rg = rgDil;
     
 end
