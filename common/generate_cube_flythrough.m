@@ -54,41 +54,38 @@ end
  
  %%
 for i=1:size(outvol,3)
-    figure(23),imshow(outvol(:,:,i))
+    %outvol(:,:,i)=adapthisteq(medfilt2(outvol(:,:,i),[2 2]));
+    outvol(:,:,i)=adapthisteq(outvol(:,:,i));
+    %figure(23),imshow(outvol(:,:,i))
 end
 
 
 
 %%
-aviobj = avifile('test2.avi');
-aviobj.Quality = 80;
-aviobj.COMPRESSION ='None';%%color image
- 
-hh=figure(23)
-for i =1:size(outvol,3)
-    imshow(outvol(:,:,i))
-    currFrame = getframe(hh);
-    aviobj = addframe(aviobj,currFrame.cdata);
-end
-aviobj = close(aviobj);
+% aviobj = avifile('test2.avi');
+% aviobj.Quality = 80;
+% aviobj.COMPRESSION ='None';%%color image
+%  
+% hh=figure(23)
+% for i =1:size(outvol,3)
+%     imshow(outvol(:,:,i))
+%     currFrame = getframe(hh);
+%     aviobj = addframe(aviobj,currFrame.cdata);
+% end
+% aviobj = close(aviobj);
 
 
 %%
 
 %// Will open an avi file name test.avi in local folder
-aviobj = avifile('test.avi');
+aviobj = avifile('test3.avi');
 %// the quality of this video file
 aviobj.Quality = 80;
+aviobj.fps = 30;
 %// compression method. See matlab manual for details.
 aviobj.COMPRESSION ='None';%%color image
  
 for i =1:size(outvol,3)
-    %// apply image processing algorithms to the image here. 
-    %// image must be in size width x height x 3
-    %//  in other words, color image. 
-    ..........
-    ..........
-    %// add image to the end of the avi file
     image=uint8(zeros(size(outvol,1),size(outvol,2),3));
     image(:,:,1)=outvol(:,:,i); 
     image(:,:,2)=outvol(:,:,i); 
@@ -97,6 +94,32 @@ for i =1:size(outvol,3)
 end
 %// close the file handle.
 aviobj = close(aviobj);
+
+
+
+
+
+%%
+outdir='D:\_WHOLE-BRAIN\interareal-movie'
+mkdir(outdir);
+for i =1:30336%size(outvol,3)
+    image=uint8(outvol(:,:,i)); 
+    imwrite(image,[outdir filesep sprintf('%05d',i) '.tif']);
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
