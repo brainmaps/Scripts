@@ -98,8 +98,8 @@ if ~(strcmp(dataType, 'double') || strcmp(dataType, 'single') || strcmp(dataType
     disp('jh_openCubeRange: Invalid input, dataType set to "double"');
 end
 
-if ~strcmp(path(end), '\')
-    path = [path '\'];
+if ~strcmp(path(end), filesep)
+    path = [path filesep];
 end
 
 %% Determine range for complete image
@@ -124,7 +124,7 @@ if complete
     rangeY = [str2double(nameFoldsY{1}(2:end)), str2double(nameFoldsY{end}(2:end))];
     
     % rangeZ
-    d = dir([path, nameFoldsX{1}, '\', nameFoldsY{1}]);
+    d = dir([path, nameFoldsX{1}, filesep, nameFoldsY{1}]);
     isub = [d(:).isdir]; %# returns logical vector
     nameFoldsZ = {d(isub).name}';
     nameFoldsZ(ismember(nameFoldsZ,{'.','..'})) = [];
@@ -160,14 +160,14 @@ if strcmp(outputType, 'one');
                 if strcmp(name, '')
                     switch fileType
                         case 'raw'
-                            files = dir([path 'x' xs '\y' ys '\z' zs '\' '*.raw']);
+                            files = dir([path 'x' xs filesep 'y' ys filesep 'z' zs filesep '*.raw']);
                         case 'tiff'
-                            files = [dir([path 'x' xs '\y' ys '\z' zs '\' '*.tiff']) ...
-                                dir([path 'x' xs '\y' ys '\z' zs '\' '*.tif'])];
+                            files = [dir([path 'x' xs filesep 'y' ys filesep 'z' zs filesep '*.tiff']) ...
+                                dir([path 'x' xs filesep 'y' ys filesep 'z' zs filesep '*.tif'])];
                         case 'auto'
-                            files = [dir([path 'x' xs '\y' ys '\z' zs '\' '*.raw']) ...
-                                dir([path 'x' xs '\y' ys '\z' zs '\' '*.tiff']) ...
-                                dir([path 'x' xs '\y' ys '\z' zs '\' '*.tif'])];
+                            files = [dir([path 'x' xs filesep 'y' ys filesep 'z' zs filesep '*.raw']) ...
+                                dir([path 'x' xs filesep 'y' ys filesep 'z' zs filesep '*.tiff']) ...
+                                dir([path 'x' xs filesep 'y' ys filesep 'z' zs filesep '*.tif'])];
                     end
                     fileNames = {files.name};
                     thisName = fileNames{1};
@@ -176,7 +176,7 @@ if strcmp(outputType, 'one');
                 end
 
                 % Create path name of the desired cube
-                p = [path 'x' xs '\y' ys '\z' zs '\' thisName];
+                p = [path 'x' xs filesep 'y' ys filesep 'z' zs filesep thisName];
                 dy(1) = (y-rangeY(1))*cubeSize(1)+1;
                 dy(2) = (y-rangeY(1)+1)*cubeSize(1);
                 dx(1) = (x-rangeX(1))*cubeSize(2)+1;
@@ -220,14 +220,14 @@ elseif strcmp(outputType, 'cubed')
                 if strcmp(name, '')
                     switch fileType
                         case 'raw'
-                            files = dir([path 'x' xs '\y' ys '\z' zs '\' '*.raw']);
+                            files = dir([path 'x' xs filesep 'y' ys filesep 'z' zs filesep '*.raw']);
                         case 'tiff'
-                            files = [dir([path 'x' xs '\y' ys '\z' zs '\' '*.tiff']) ...
-                                dir([path 'x' xs '\y' ys '\z' zs '\' '*.tif'])];
+                            files = [dir([path 'x' xs filesep 'y' ys filesep 'z' zs filesep '*.tiff']) ...
+                                dir([path 'x' xs filesep 'y' ys filesep 'z' zs filesep '*.tif'])];
                         case 'auto'
-                            files = [dir([path 'x' xs '\y' ys '\z' zs '\' '*.raw']) ...
-                                dir([path 'x' xs '\y' ys '\z' zs '\' '*.tiff']) ...
-                                dir([path 'x' xs '\y' ys '\z' zs '\' '*.tif'])];
+                            files = [dir([path 'x' xs filesep 'y' ys filesep 'z' zs filesep '*.raw']) ...
+                                dir([path 'x' xs filesep 'y' ys filesep 'z' zs filesep '*.tiff']) ...
+                                dir([path 'x' xs filesep 'y' ys filesep 'z' zs filesep '*.tif'])];
                     end
                     fileNames = {files.name};
                     thisName = fileNames{1};
@@ -236,7 +236,7 @@ elseif strcmp(outputType, 'cubed')
                 end
 
                 % Create path name of the desired cube
-                p = [path 'x' xs '\y' ys '\z' zs '\' ...
+                p = [path 'x' xs filesep 'y' ys filesep 'z' zs filesep ...
                     thisName '_x' xs '_y' ys '_z' zs '.raw'];
                 
                 data{y+1, x+1, z+1} = openCube(p, cubeSize, dataType);
@@ -274,4 +274,3 @@ for i = 1:cubeSize(3)
 end
 
 end
-
