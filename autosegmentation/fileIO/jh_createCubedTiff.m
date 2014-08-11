@@ -2,31 +2,33 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 path = 'D:\Julian\Synapse segmentation\Datasets\Ivo\';
 name = 'Ivo';
-imageName = 'labels';
+% imageName = 'test';
 cubeSize = [128 128 128]; % [r c d]
 padValue = 0;
-padOrientation = [0 0 1]; % [r c d]
+padOrientation = [0 0 0]; % [r c d]
+im = alreadyLoadedMatrix;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-FileTif='F:\c0.tif';
-InfoImage=imfinfo(FileTif);
-mImage=InfoImage(1).Width;
-nImage=InfoImage(1).Height;
-NumberImages=length(InfoImage);
+% FileTif='F:\c0.tif';
+% InfoImage=imfinfo(FileTif);
+% mImage=InfoImage(1).Width;
+% nImage=InfoImage(1).Height;
+% NumberImages=length(InfoImage);
+% 
+% FinalImage=zeros(512,512,384,'double');
+% for i=1:384
+%     disp([num2str(i) '/' num2str(NumberImages)]);
+%     tIm = double(imread(FileTif,'Index',i));
+%    FinalImage(:,:,i)=tIm(1:512, 1:512);
+%    
+% end
+% 
+% im = jh_normalizeMatrix(FinalImage);
+% clear FinalImage
 
-FinalImage=zeros(512,512,384,'double');
-for i=1:384
-    disp([num2str(i) '/' num2str(NumberImages)]);
-    tIm = double(imread(FileTif,'Index',i));
-   FinalImage(:,:,i)=tIm(1:512, 1:512);
-   
-end
-
-im = jh_normalizeMatrix(FinalImage);
 
 
-clear FinalImage
 % im = double(h5read([path name '.h5'], ['/' imageName])) ./ 255;
 % im = im(1:200, 1:200, :);
 
