@@ -1,5 +1,3 @@
-% PLEASE READ THE FOLLOWING INFO BEFORE RUNNING THE SCRIPT:
-%
 % Scale down a big KNOSSOS volume and write the resized data to the disk as
 %  a flat numbered TIF stack (readable by md_volread) and/or a directory structure
 %  similar to KNOSSOS (not compatible with KNOSSOS itself, but with
@@ -9,7 +7,7 @@
 %  http://www.knossostool.org/downloads/KNOSSOSmaker_gaussfilter.zip
 %  on the produced TIF stack (only works with MS Windows in this form).
 %
-% v1.0
+% v1.1
 %
 % Dependencies:
 %  You can easily satisfy all dependencies by adding the content of ...
@@ -25,16 +23,16 @@
 % - This usually needs at least 9 GiB free RAM (depending on the dataset)
 %    and can take a few minutes to run.
 
+
 %% Variables. You will most likely need to change them, at least the paths.
 
-inputPath = '~/mpi/20130318.membrane.ctx.40nm/'; % location of the input KNOSSOS root
-name = '20130318.membrane.ctx.40nm'; % dataset name (see knossos.conf file)
+inputPath = '~/mpi/20130318.membrane.ctx.40nm/'; % location of the KNOSSOS root
+name = '20130318.membrane.ctx.40nm'; % dataset name: likely the same as the KNOSSOS directory name
 tifPath = '/tmp/ctx40-small-0.125/'; % where to write the numbered TIF stack
 knossosPath = '/tmp/ctx40-small-0.125-knossos/'; % where to write the root ...
 % ... of the KNOSSOS-like cubes (has to end with a path seperator).
 
-cleanWorkspace = true; % if true: clear all temporary variables ...
-% ... of the script after finishing.
+cleanWorkspace = true; % if true: clear all temporary variables of the script after finishing
 
 scale = 0.125; % the image volume will be resized by this factor
 filePrefix = [num2str(scale), '_']; % file names in the TIF stack start ...
@@ -43,12 +41,14 @@ filePrefix = [num2str(scale), '_']; % file names in the TIF stack start ...
 writeTifs = true; % if false, no tif stack is written.
 writeKnossos = true; % if false, no knossos-like structure is written
 
+
 %% Check variable validity
 
 md_checkdir(inputPath);
 if ceil(1 / scale) ~= floor(1 / scale)
     disp('(1 / scale) should be an integer. Output might be broken.');
 end
+
 
 %% Scale data
 
@@ -65,6 +65,7 @@ clear scaledVolXY;
 disp('Scaling finished.');
 toc % stop timer
 
+
 %% Write TIF stack to disk
 
 if writeTifs
@@ -73,6 +74,7 @@ if writeTifs
     md_volwrite(scaledVol, tifPath, 'none', false, filePrefix, '%04u', '', 'tif');
 
 end
+
 
 %% Write KNOSSOS-like data structure to disk (not compatible with KNOSSOS itself)
 % For full KNOSSOS compatibility see the notice at the top of the script.
@@ -86,9 +88,9 @@ if writeKnossos
     
     scaledVolDouble = mat2gray(scaledVol);
 
-    cubeSize = [128 128 128]; % [r c d]
+    cubeSize = [128, 128, 128]; % [r c d]
     padValue = 0;
-    padOrientation = [0 0 0]; % [r c d]
+    padOrientation = [0, 0, 0]; % [r c d]
 
     n = size(scaledVolDouble);
 
@@ -120,24 +122,27 @@ if writeKnossos
     % Divide image into cubes
     for x = 1:nc(2)
 
-        px = ['x' sprintf('%04d', x-1)];
-        mkdir([knossosPath name], px);
-        cx = 1+cubeSize(2)*(x-1);
+        px = ['x', sprintf('%04d', x - 1)];
+        mkdir([knossosPath, name], px);
+        cx = 1 + cubeSize(2) * (x - 1);
 
         for y = 1:nc(1)
 
-            py = ['y' sprintf('%04d', y-1)];
-            mkdir([knossosPath name filesep px], py);
-            cy = 1+cubeSize(1)*(y-1);
+            py = ['y', sprintf('%04d', y - 1)];
+            mkdir([knossosPath, name, filesep, px], py);
+            cy = 1 + cubeSize(1) * (y - 1);
 
             for z = 1:nc(3)
 
-                pz = ['z' sprintf('%04d', z-1)];
-                mkdir([knossosPath name filesep px filesep py], pz);
-                cz = 1+cubeSize(3)*(z-1);
+                pz = ['z', sprintf('%04d', z-1)];
+                mkdir([knossosPath, name, filesep, px, filesep, py], pz);
+                cz = 1 + cubeSize(3) * (z - 1);
 
-                saveImage =  paddedImage(cy:cy+cubeSize(2)-1, cx:cx+cubeSize(1)-1, cz:cz+cubeSize(3)-1);
-                saveImageAsTiff3D(saveImage, [knossosPath name filesep px filesep py filesep pz filesep name '_' px '_' py '_' pz '.TIFF'], 'gray');
+                saveImage =  paddedImage(cy : (cy + cubeSize(2) - 1), ...
+                    (cx : cx + cubeSize(1) - 1), (cz : cz + cubeSize(3) - 1));
+                saveImageAsTiff3D(saveImage, [knossosPath, name, filesep, ...
+                    px, filesep, py, filesep, pz, filesep, name, '_', px, ...
+                    '_', py, '_', pz, '.TIFF'], 'gray');
                 clear saveImage;
             end
         end
@@ -145,15 +150,15 @@ if writeKnossos
 
 end
 
+
 %% Tidy up workspace (if "cleanWorkspace" is true)
 
 if cleanWorkspace
 
-    clear x y z cx cy cz px py pz
-    clear name cubeSize nc
-    clear inputPath knossosPath tifPath
-    clear scale zValues writeTifs writeKnossos padOrientation padValue
-    clear scaledVol scaledVolDouble paddedImage
+    clear x y z cx cy cz px py pz cubeSize nc scale zValues ...
+        padOrientation padValue writeTifs writeKnossos ...
+        inputPath knossosPath tifPath name ...
+        scaledVol scaledVolDouble paddedImage
 
 end
 
