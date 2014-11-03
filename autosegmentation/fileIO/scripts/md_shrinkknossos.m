@@ -20,7 +20,7 @@
 %  - https://github.com/brainmaps/Scripts/blob/8f7aa686457bea809cb354a4da2316e0d0c1cb9a/autosegmentation/fileIO/jh_saveImageAsTiff3D.m
 %
 % WARNING:
-% - This usually needs at least 9 GiB free RAM (depending on the dataset)
+% - This usually needs at least 9 GiB free RAM or swap space (depending on the dataset)
 %    and can take a few minutes to run.
 
 
@@ -29,14 +29,15 @@
 inputPath = '~/mpi/20130318.membrane.ctx.40nm/'; % location of the KNOSSOS root
 name = '20130318.membrane.ctx.40nm'; % dataset name: likely the same as the KNOSSOS directory name
 tifPath = '/tmp/ctx40-small-0.125/'; % where to write the numbered TIF stack
-knossosPath = '/tmp/ctx40-small-0.125-knossos/'; % where to write the root ...
-% ... of the KNOSSOS-like cubes (has to end with a path seperator).
+knossosPath = '/tmp/ctx40-small-0.125-knossos/'; % where to write the root of the ...
+%                                                  KNOSSOS-like cubes (has to end with a path seperator).
 
 cleanWorkspace = true; % if true: clear all temporary variables of the script after finishing
 
-scale = 0.125; % the image volume will be resized by this factor
+scale = 0.125; % the image volume will be resized by this factor in each dimension, ...
+%                so the volume will be resized by (scale ^ 3) in the end.
 filePrefix = [num2str(scale), '_']; % file names in the TIF stack start ...
-% ... with the scaling factor, while preserving file order.
+%                                     with the scaling factor, while preserving file order.
 
 writeTifs = true; % if false, no tif stack is written.
 writeKnossos = true; % if false, no knossos-like structure is written
