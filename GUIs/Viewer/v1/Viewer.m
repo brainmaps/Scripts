@@ -44,6 +44,7 @@ classdef Viewer < handle
         m_settings_advanced
         m_tools
         m_overlays
+        m_overlays_loadedOverlays
         m_overlays_loadOverlay
         m_overlays_loadOverlay_cubedData
         m_overlays_loadOverlay_imageStack
@@ -62,7 +63,7 @@ classdef Viewer < handle
     properties (SetAccess = protected)
         visualization = Visualization([0, 0, 0], 256, true, true, 5, 'bicubic', 100);
         mainSettings = MainSettings('single', 'DefaultUicontrolBackgroundColor');
-        image = Data({[3 6], [3 6], [0 3]}, [], [1 1 3], [128 128 128], 'cubed');
+        image
         overlay
         fileIO
     end
@@ -75,7 +76,9 @@ classdef Viewer < handle
     methods
         %% Constructor
         function MainWindow = Viewer()
-                        
+            
+            %% The window
+            
             % Main window
             MainWindow.Figure = figure( ...
                 'MenuBar', 'none', ...
@@ -125,8 +128,7 @@ classdef Viewer < handle
                 'SliderStep', [.01 .1], ...
                 'Max', 2);
             
-            % -------------------------------------------------------------
-            % The Menu
+            %% The Menu
 
             % File...
             MainWindow.m_file = uimenu(MainWindow.Figure, ...
@@ -159,20 +161,20 @@ classdef Viewer < handle
                 % > Display size
                     MainWindow.m_settings_displaySize_512 = uimenu(MainWindow.m_settings_displaySize, ...
                         'Label', '512 pixels', ...
-                        'Callback', @m_settings_displaySize_512_callback);
+                        'Callback', @MainWindow.m_settings_displaySize_512_callback);
                     MainWindow.m_settings_displaySize_256 = uimenu(MainWindow.m_settings_displaySize, ...
                         'Label', '256 pixels', ...
-                        'Callback', @m_settings_displaySize_256_callback);
+                        'Callback', @MainWindow.m_settings_displaySize_256_callback);
                     MainWindow.m_settings_displaySize_128 = uimenu(MainWindow.m_settings_displaySize, ...
                         'Label', '128 pixels', ...
-                        'Callback', @m_settings_displaySize_128_callback);
+                        'Callback', @MainWindow.m_settings_displaySize_128_callback);
                     MainWindow.m_settings_displaySize_64 = uimenu(MainWindow.m_settings_displaySize, ...
                         'Label', '64 pixels', ...
-                        'Callback', @m_settings_displaySize_64_callback);
+                        'Callback', @MainWindow.m_settings_displaySize_64_callback);
                     % -
                     MainWindow.m_settings_displaySize_other = uimenu(MainWindow.m_settings_displaySize, ...
                         'Label', 'Other', ...
-                        'Callback', @m_settings_displaySize_other, ...
+                        'Callback', @MainWindow.m_settings_displaySize_other_callback, ...
                         'Separator', 'on');
                 % <
                 MainWindow.m_settings_anisotropicInterpolationType = uimenu(MainWindow.m_settings, ...
@@ -180,41 +182,41 @@ classdef Viewer < handle
                 % > Anisotropic interpolation type
                     MainWindow.m_settings_anisotropicInterpolationType_nearest = uimenu(MainWindow.m_settings_anisotropicInterpolationType, ...
                         'Label', 'Nearest', ...
-                        'Callback', @m_settings_anisotropicInterpolationType_nearest_callback);
+                        'Callback', @MainWindow.m_settings_anisotropicInterpolationType_nearest_callback);
                     MainWindow.m_settings_anisotropicInterpolationType_bilinear = uimenu(MainWindow.m_settings_anisotropicInterpolationType, ...
                         'Label', 'Bilinear', ...
-                        'Callback', @m_settings_anisotropicInterpolationType_bilinear_callback);
+                        'Callback', @MainWindow.m_settings_anisotropicInterpolationType_bilinear_callback);
                     MainWindow.m_settings_anisotropicInterpolationType_bicubic = uimenu(MainWindow.m_settings_anisotropicInterpolationType, ...
                         'Label', 'Bicubic', ...
-                        'Callback', @m_settings_anisotropicInterpolationType_bicubic_callback);
+                        'Callback', @MainWindow.m_settings_anisotropicInterpolationType_bicubic_callback);
                     MainWindow.m_settings_anisotropicInterpolationType_box = uimenu(MainWindow.m_settings_anisotropicInterpolationType, ...
                         'Label', 'Box', ...
-                        'Callback', @m_settings_anisotropicInterpolationType_box_callback);
+                        'Callback', @MainWindow.m_settings_anisotropicInterpolationType_box_callback);
                     MainWindow.m_settings_anisotropicInterpolationType_lanczos2 = uimenu(MainWindow.m_settings_anisotropicInterpolationType, ...
                         'Label', 'Lanczos-2', ...
-                        'Callback', @m_settings_anisotropicInterpolationType_lanczos2_callback);
+                        'Callback', @MainWindow.m_settings_anisotropicInterpolationType_lanczos2_callback);
                     MainWindow.m_settings_anisotropicInterpolationType_lanczos3 = uimenu(MainWindow.m_settings_anisotropicInterpolationType, ...
                         'Label', 'Lanczos-3', ...
-                        'Callback', @m_settings_anisotropicInterpolationType_lanczos3_callback);
+                        'Callback', @MainWindow.m_settings_anisotropicInterpolationType_lanczos3_callback);
                 % <
                 MainWindow.m_settings_bufferType = uimenu(MainWindow.m_settings, ...
                     'Label', 'Buffer type');
                 % > Buffer Type
                     MainWindow.m_settings_bufferType_wholeImage = uimenu(MainWindow.m_settings_bufferType, ...
                         'Label', 'Whole image', ...
-                        'Callback', @m_settings_bufferType_wholeImage_callback);
+                        'Callback', @MainWindow.m_settings_bufferType_wholeImage_callback);
                     MainWindow.m_settings_bufferType_cubed = uimenu(MainWindow.m_settings_bufferType, ...
                         'Label', 'Cubed', ...
-                        'Callback', @m_settings_bufferType_cubed_callback);
+                        'Callback', @MainWindow.m_settings_bufferType_cubed_callback);
                 % -
                 MainWindow.m_settings_sectionalPlanes = uimenu(MainWindow.m_settings, ...
                     'Label', 'Sectional planes', ...
-                    'Callback', @m_settings_sectionalPlanes_callback, ...
+                    'Callback', @MainWindow.m_settings_sectionalPlanes_callback, ...
                     'Separator', 'on', ...
                     'Accelerator', 'q');
                 MainWindow.m_settings_overlayObjects = uimenu(MainWindow.m_settings, ...
                     'Label', 'Overlay objects', ...
-                    'Callback', @m_settings_overlayObjects_callback, ...
+                    'Callback', @MainWindow.m_settings_overlayObjects_callback, ...
                     'Accelerator', 'w');
                 % -
                 MainWindow.m_settings_advanced = uimenu(MainWindow.m_settings, ...
@@ -230,32 +232,37 @@ classdef Viewer < handle
             MainWindow.m_overlays = uimenu(MainWindow.Figure, ...
                 'Label', 'Overlays');
             % > Overlays
+                MainWindow.m_overlays_loadedOverlays = uimenu(MainWindow.m_overlays, ...
+                    'Label', 'Loaded overlays');
+                % -
                 MainWindow.m_overlays_loadOverlay = uimenu(MainWindow.m_overlays, ...
                     'Label', 'Load overlay', ...
-                    'Callback', @m_overlays_loadOverlay_callback);
+                    'Separator', 'on');
                 % > Load overlay
                     MainWindow.m_overlays_loadOverlay_cubedData = uimenu(MainWindow.m_overlays_loadOverlay, ...
                         'Label', 'Cubed data', ...
-                        'Callback', @m_overlays_loadOverlay_cubedData_callback, ...
+                        'Callback', @MainWindow.m_overlays_loadOverlay_cubedData_callback, ...
                         'Enable', 'off');
                     MainWindow.m_overlays_loadOverlay_imageStack = uimenu(MainWindow.m_overlays_loadOverlay, ...
                         'Label', 'Image stack', ...
-                        'Callback', @m_overlays_loadOverlay_imageStack_callback, ...
+                        'Callback', @MainWindow.m_overlays_loadOverlay_imageStack_callback, ...
                         'Enable', 'off');
                     MainWindow.m_overalys_loadOverlay_mFile = uimenu(MainWindow.m_overlays_loadOverlay, ...
                         'Label', 'M-file', ...
-                        'Callback', @m_overlays_loadOverlay_mFile_callback);
+                        'Callback', @MainWindow.m_overlays_loadOverlay_mFile_callback);
                 % <
                 MainWindow.m_overlays_addBlank = uimenu(MainWindow.m_overlays, ...
                     'Label', 'Add blank', ...
-                    'Callback', @m_overlays_addBlank_callback, ...
+                    'Callback', @MainWindow.m_overlays_addBlank_callback, ...
                     'Enable', 'off');
 
+            MainWindow.this_afterCreationFcn();
         end
         
         %% MainWindow callbacks
-        function this_closeRequestFcn(MainWindow, ~, ~)
-            delete(MainWindow.Figure);
+        function this_closeRequestFcn(this, ~, ~)
+            delete(this.Figure);
+            delete(this);
         end
         function this_resizeFcn(MainWindow, hObject, ~)
         
@@ -278,7 +285,14 @@ classdef Viewer < handle
             this.fileIO = FileIO(thisPath);
             this.fileIO.thisFolder = thisPath;
             addpath(genpath(thisPath));
+            
+            this.image = Data({[3 6], [3 6], [0 3]}, [], [1 1 3], [128 128 128], 'cubed', 'single', [], []);
+            
 
+        end
+        function this_afterCreationFcn(this)
+            % Check all menu items according to their corresponding values
+            this.checkAllMenuItems();
         end
         function this_keyPressFcn(this, ~, eventdata)
 
@@ -402,48 +416,52 @@ classdef Viewer < handle
         
         %% Menu callbacks
         function m_file_loadImage_fromCubedData_callback(this, ~, ~)
-%             handles = guidata(hObject);
 
-            % Get the directory
-            folder = uigetdir(this.fileIO.defaultFolder, 'Select dataset folder');
-            if folder == 0
-                return;
-            else
-                this.fileIO.loadImageFolder = folder;
+%             % Get the directory
+%             folder = uigetdir(this.fileIO.defaultFolder, 'Select dataset folder');
+%             if folder == 0
+%                 return;
+%             else
+%                 this.fileIO.loadImageFolder = folder;
+%             end
+% 
+%             % Dialog box to specify the range which will be loaded
+%             range = inputdlg( ...
+%                 {   'From (x, y, z)', 'To (x, y, z)', ...
+%                     'Anisotropy factors (x, y, z)' ...
+%                 }, ...
+%                 'Specify range...', ...
+%                 1, ...
+%                 {   [num2str(this.image.cubeRange{1}(1)) ', ' num2str(this.image.cubeRange{2}(1)) ', ' num2str(this.image.cubeRange{3}(1))], ...
+%                     [num2str(this.image.cubeRange{1}(2)) ', ' num2str(this.image.cubeRange{2}(2)) ', ' num2str(this.image.cubeRange{3}(2))], ...
+%                     [num2str(this.image.anisotropic(1)), ', ' num2str(this.image.anisotropic(2)), ', ', num2str(this.image.anisotropic(3))] ...
+%                 });
+%             rangeFrom = strsplit(range{1}, {', ', ','});
+%             rangeTo = strsplit(range{2}, {', ', ','});
+%             rangeX = [str2double(rangeFrom{1}) str2double(rangeTo{1})];
+%             rangeY = [str2double(rangeFrom{2}) str2double(rangeTo{2})];
+%             rangeZ = [str2double(rangeFrom{3}) str2double(rangeTo{3})];
+%             anisotropic = strsplit(range{3}, {', ', ','});
+% 
+%             this.image.anisotropic = cellfun(@(x) str2double(x), anisotropic);
+%             this.image.cubeRange = {rangeX, rangeY, rangeZ};
+% 
+%             if strcmp(this.image.bufferType, 'whole')
+%                 this.image.image = main_loadImage(rangeX, rangeY, rangeZ);
+%             elseif strcmp(this.image.bufferType, 'cubed')
+%                 this.image.image = cell(rangeX(2)+1, rangeY(2)+1, rangeZ(2)+1);
+%             else
+%                 EX.identifier = 'Viewer: Unknown buffer type';
+%                 EX.message = ['Buffer type ' this.image.bufferType 'is invalid.'];
+%                 EX.stack = [];
+%                 EX.solution = 'No known solution found.';
+%                 this.throwException(EX, 'ERROR: Unknown buffer type');
+%             end
+            if isempty(this.image.sourceFolder)
+                this.image.sourceFolder = this.fileIO.defaultFolder;
             end
-
-            % Dialog box to specify the range which will be loaded
-            range = inputdlg( ...
-                {   'From (x, y, z)', 'To (x, y, z)', ...
-                    'Anisotropy factors (x, y, z)' ...
-                }, ...
-                'Specify range...', ...
-                1, ...
-                {   [num2str(this.image.cubeRange{1}(1)) ', ' num2str(this.image.cubeRange{2}(1)) ', ' num2str(this.image.cubeRange{3}(1))], ...
-                    [num2str(this.image.cubeRange{1}(2)) ', ' num2str(this.image.cubeRange{2}(2)) ', ' num2str(this.image.cubeRange{3}(2))], ...
-                    [num2str(this.image.anisotropic(1)), ', ' num2str(this.image.anisotropic(2)), ', ', num2str(this.image.anisotropic(3))] ...
-                });
-            rangeFrom = strsplit(range{1}, {', ', ','});
-            rangeTo = strsplit(range{2}, {', ', ','});
-            rangeX = [str2double(rangeFrom{1}) str2double(rangeTo{1})];
-            rangeY = [str2double(rangeFrom{2}) str2double(rangeTo{2})];
-            rangeZ = [str2double(rangeFrom{3}) str2double(rangeTo{3})];
-            anisotropic = strsplit(range{3}, {', ', ','});
-
-            this.image.anisotropic = cellfun(@(x) str2double(x), anisotropic);
-            this.image.cubeRange = {rangeX, rangeY, rangeZ};
-
-            if strcmp(this.image.bufferType, 'whole')
-                this.image.image = main_loadImage(rangeX, rangeY, rangeZ);
-            elseif strcmp(this.image.bufferType, 'cubed')
-                this.image.image = cell(rangeX(2)+1, rangeY(2)+1, rangeZ(2)+1);
-            else
-                EX.identifier = 'Viewer: Unknown buffer type';
-                EX.message = ['Buffer type ' this.image.bufferType 'is invalid.'];
-                EX.stack = [];
-                EX.solution = 'No known solution found.';
-                this.throwException(EX, 'ERROR: Unknown buffer type');
-            end
+            this.image.sourceType = 'cubed';
+            this.image.loadDataDlg();
 
             this.createImageDisplay();
             this.displayCurrentPosition('');
@@ -463,138 +481,124 @@ classdef Viewer < handle
 % 
 %         end
 % 
-%         function m_settings_displaySize_512_callback(hObject, ~)
-%             handles = guidata(hObject);
-%             main.visualization.displaySize = 512;
-%             main_createImage(hObject);
-%             main_checkCurrentDisplaySizeInMenu();
-%             main_displayCurrentPosition(main.visualization.currentPosition, '', handles);
-%         end
-%         function m_settings_displaySize_256_callback(hObject, ~)
-%             handles = guidata(hObject);
-%             main.visualization.displaySize = 256;
-%             main_createImage(hObject);
-%             main_checkCurrentDisplaySizeInMenu();
-%             main_displayCurrentPosition(main.visualization.currentPosition, '', handles);
-%         end
-%         function m_settings_displaySize_128_callback(hObject, ~)
-%             handles = guidata(hObject);
-%             main.visualization.displaySize = 128;
-%             main_createImage(hObject);
-%             main_checkCurrentDisplaySizeInMenu();
-%             main_displayCurrentPosition(main.visualization.currentPosition, '', handles);
-%         end
-%         function m_settings_displaySize_64_callback(hObject, ~)
-%             handles = guidata(hObject);
-%             main.visualization.displaySize = 64;
-%             main_createImage(hObject);
-%             main_checkCurrentDisplaySizeInMenu();
-%             main_displayCurrentPosition(main.visualization.currentPosition, '', handles);
-%         end
-%         function m_settings_displaySize_other(hObject, ~)
-%             handles = guidata(hObject);
-%             dispSize = inputdlg({'Display size (even values only)'}, ...
-%                 'Set display size', ...
-%                 1, {num2str(main.visualization.displaySize)});
-%             main.visualization.displaySize = str2double(dispSize{1});
-%             main_createImage(hObject);
-%             main_checkCurrentDisplaySizeInMenu();
-%             main_displayCurrentPosition(main.visualization.currentPosition, '', handles);
-% 
-%         end
-%         function m_settings_anisotropicInterpolationType_nearest_callback(hObject, ~)
-%             handles = guidata(hObject);
-%             main.visualization.anisotropicInterpolationType = 'nearest';
-% 
-%             main_checkAnisotropicInterpolationType();
-% 
-%             main_displayCurrentPosition(main.visualization.currentPosition, '', handles);
-%         end
-%         function m_settings_anisotropicInterpolationType_bilinear_callback(hObject, ~)
-%             handles = guidata(hObject);
-%             main.visualization.anisotropicInterpolationType = 'bilinear';
-% 
-%             main_checkAnisotropicInterpolationType();
-% 
-%             main_displayCurrentPosition(main.visualization.currentPosition, '', handles);
-%         end
-%         function m_settings_anisotropicInterpolationType_bicubic_callback(hObject, ~)
-%             handles = guidata(hObject);
-%             main.visualization.anisotropicInterpolationType = 'bicubic';
-% 
-%             main_checkAnisotropicInterpolationType();
-% 
-%             main_displayCurrentPosition(main.visualization.currentPosition, '', handles);
-%         end
-%         function m_settings_anisotropicInterpolationType_box_callback(hObject, ~)
-%             handles = guidata(hObject);
-%             main.visualization.anisotropicInterpolationType = 'box';
-% 
-%             main_checkAnisotropicInterpolationType();
-% 
-%             main_displayCurrentPosition(main.visualization.currentPosition, '', handles);
-%         end
-%         function m_settings_anisotropicInterpolationType_lanczos2_callback(hObject, ~)
-%             handles = guidata(hObject);
-%             main.visualization.anisotropicInterpolationType = 'lanczos2';
-% 
-%             main_checkAnisotropicInterpolationType();
-% 
-%             main_displayCurrentPosition(main.visualization.currentPosition, '', handles);
-%         end
-%         function m_settings_anisotropicInterpolationType_lanczos3_callback(hObject, ~)
-%             handles = guidata(hObject);
-%             main.visualization.anisotropicInterpolationType = 'lanczos3';
-% 
-%             main_checkAnisotropicInterpolationType();
-% 
-%             main_displayCurrentPosition(main.visualization.currentPosition, '', handles);
-%         end
-%         function m_settings_bufferType_wholeImage_callback(hObject, ~)
-%             handles = guidata(hObject);
-% 
-%             main.visualization.bufferType = 'whole';
-%             main_checkBufferType();
-%             main.data.image = main_loadImage(main.data.cubeRange{1}, main.data.cubeRange{2}, main.data.cubeRange{3});
-%             main_displayCurrentPosition(main.visualization.currentPosition, '', handles);
-%             main_activateObjects();
-% 
-%         end
-%         function m_settings_bufferType_cubed_callback(hObject, ~)
-%             handles = guidata(hObject);
-% 
-%             main.visualization.bufferType = 'cubed';
-%             main_checkBufferType();
-%             main_displayCurrentPosition(main.visualization.currentPosition, '', handles);
-%             main_activateObjects();
-% 
-%         end
-%         function m_settings_sectionalPlanes_callback(hObject, ~)
-%             handles = guidata(hObject);
-% 
-%             if main.visualization.bSectionalPlanes
-%                 main.visualization.bSectionalPlanes = false;
-%                 set(handles.m_settings_sectionalPlanes, 'Checked', 'off');
-%             else
-%                 main.visualization.bSectionalPlanes = true;
-%                 set(handles.m_settings_sectionalPlanes, 'Checked', 'on');
-%             end
-%             main_displayCurrentPosition(main.visualization.currentPosition, '', handles);
-% 
-%         end
-% 
-%         function m_overlays_loadOverlay_mFile_callback(hObject, ~)
-%             handles = guidata(hObject);
-% 
-%             % Get the directory
-%             folder = uigetdir(main.fileIO.defaultFolder, 'Select m-file');
-%             if folder == 0
-%                 return;
-%             else
-%                 main.fileIO.load.folder = folder;
-%             end
-% 
-%         end
+        function m_settings_displaySize_512_callback(this, ~, ~)
+            this.visualization.displaySize = 512;
+            this.createImageDisplay();
+            this.checkCurrentDisplaySizeInMenu();
+            this.displayCurrentPosition('');
+        end
+        function m_settings_displaySize_256_callback(this, ~, ~)
+            this.visualization.displaySize = 256;
+            this.createImageDisplay();
+            this.checkCurrentDisplaySizeInMenu();
+            this.displayCurrentPosition('');
+        end
+        function m_settings_displaySize_128_callback(this, ~, ~)
+            this.visualization.displaySize = 128;
+            this.createImageDisplay();
+            this.checkCurrentDisplaySizeInMenu();
+            this.displayCurrentPosition('');
+        end
+        function m_settings_displaySize_64_callback(this, ~, ~)
+            this.visualization.displaySize = 64;
+            this.createImageDisplay();
+            this.checkCurrentDisplaySizeInMenu();
+            this.displayCurrentPosition('');
+        end
+        function m_settings_displaySize_other_callback(this, ~, ~)
+            dispSize = inputdlg({'Display size (even values only)'}, ...
+                'Set display size', ...
+                1, {num2str(this.visualization.displaySize)});
+            this.visualization.displaySize = str2double(dispSize{1});
+            this.createImageDisplay();
+            this.checkCurrentDisplaySizeInMenu();
+            this.displayCurrentPosition('');
+
+        end
+        function m_settings_anisotropicInterpolationType_nearest_callback(this, ~, ~)
+            
+            this.visualization.anisotropicInterpolationType = 'nearest';
+            this.checkAnisotropicInterpolationType();
+            this.displayCurrentPosition('');
+            
+        end
+        function m_settings_anisotropicInterpolationType_bilinear_callback(this, ~, ~)
+            
+            this.visualization.anisotropicInterpolationType = 'bilinear';
+            this.checkAnisotropicInterpolationType();
+            this.displayCurrentPosition('');
+            
+        end
+        function m_settings_anisotropicInterpolationType_bicubic_callback(this, ~, ~)
+            
+            this.visualization.anisotropicInterpolationType = 'bicubic';
+            this.checkAnisotropicInterpolationType();
+            this.displayCurrentPosition('');
+            
+        end
+        function m_settings_anisotropicInterpolationType_box_callback(this, ~, ~)
+            
+            this.visualization.anisotropicInterpolationType = 'box';
+            this.checkAnisotropicInterpolationType();
+            this.displayCurrentPosition('');
+            
+        end
+        function m_settings_anisotropicInterpolationType_lanczos2_callback(this, ~, ~)
+            
+            this.visualization.anisotropicInterpolationType = 'lanczos2';
+            this.checkAnisotropicInterpolationType();
+            this.displayCurrentPosition('');
+            
+        end
+        function m_settings_anisotropicInterpolationType_lanczos3_callback(this, ~, ~)
+            
+            this.visualization.anisotropicInterpolationType = 'lanczos3';
+            this.checkAnisotropicInterpolationType();
+            this.displayCurrentPosition('');
+            
+        end
+        function m_settings_bufferType_wholeImage_callback(this, ~, ~)
+
+            this.image.bufferType = 'whole';
+            this.checkBufferType();
+            this.loadImage();
+            this.displayCurrentPosition('');
+            this.activateObjects();
+
+        end
+        function m_settings_bufferType_cubed_callback(this, ~, ~)
+
+            this.image.bufferType = 'cubed';
+            this.checkBufferType();
+            this.displayCurrentPosition('');
+            this.activateObjects();
+
+        end
+        function m_settings_sectionalPlanes_callback(this, ~, ~)
+
+            if this.visualization.bSectionalPlanes
+                this.visualization.bSectionalPlanes = false;
+                set(this.m_settings_sectionalPlanes, 'Checked', 'off');
+            else
+                this.visualization.bSectionalPlanes = true;
+                set(this.m_settings_sectionalPlanes, 'Checked', 'on');
+            end
+            this.displayCurrentPosition('');
+
+        end
+
+        function m_overlays_loadOverlay_mFile_callback(this, ~, ~)
+
+            % Add entry to the overlays
+            this.overlay{length(this.overlay) + 1} ...
+                = Data( ...
+                [], [], this.image.anisotropic, [], ...
+                this.image.bufferType, [], 'm-File');
+            
+            % Load the image
+            this.overlay(length(this.overlay)).loadData();
+
+        end
 
         
         %% Property get functions
@@ -645,6 +649,20 @@ classdef Viewer < handle
             this.Display = imshow(zeros(dispSize), 'Parent', this.AxesDisplay);
             set(this.Display, 'ButtonDownFcn', @this.display_buttonDownFcn);
 %             set(this.Display, 'uicontextmenu', this.cm_images);
+
+        end
+                
+        function loadImage(this)
+            
+            im = jh_openCubeRange( ...
+                this.fileIO.loadImageFolder, '', ...
+                'cubeSize', this.image.cubeSize, ...
+                'range', this.image.cubeRange{1}, this.image.cubeRange{2}, this.image.cubeRange{3}, ...
+                'dataType', this.mainSettings.prefType, ...
+                'outputType', 'cubed', ...
+                'fileType', 'auto');
+
+            this.image.image = cellfun(@(x) x/255, im, 'UniformOutput', false);
 
         end
 
@@ -826,10 +844,10 @@ classdef Viewer < handle
                         if isempty(this.image.image{y+1, x+1, z+1})
 
                             this.image.image{y+1, x+1, z+1} = jh_openCubeRange( ...
-                                this.fileIO.loadImageFolder, '', ...
+                                this.image.sourceFolder, '', ...
                                 'cubeSize', [128 128 128], ...
                                 'range', 'oneCube', [x, y, z], ...
-                                'dataType', this.mainSettings.prefType, ...
+                                'dataType', this.image.dataType, ...
                                 'outputType', 'one', ...
                                 'fileType', 'auto') / 255;
 
@@ -953,8 +971,88 @@ classdef Viewer < handle
             this.visualization.currentPosition = bounds;
 
         end
+        
+        function checkAllMenuItems(this)
+            this.checkCurrentDisplaySizeInMenu();
+            this.checkAnisotropicInterpolationType();
+            this.checkBufferType();
+
+            if this.visualization.bSectionalPlanes
+                set(this.m_settings_sectionalPlanes, 'Checked', 'on');
+            else
+                set(this.m_settings_sectionalPlanes, 'Checked', 'off');
+            end
+            if this.visualization.bOverlayObjects
+                set(this.m_settings_overlayObjects, 'Checked', 'on');
+            else
+                set(this.m_settings_overlayObjects, 'Checked', 'off');
+            end
+
+        end
+        function checkCurrentDisplaySizeInMenu(this)
+
+            set(this.m_settings_displaySize_512, 'Checked', 'off');
+            set(this.m_settings_displaySize_256, 'Checked', 'off');
+            set(this.m_settings_displaySize_128, 'Checked', 'off');
+            set(this.m_settings_displaySize_64, 'Checked', 'off');
+            set(this.m_settings_displaySize_other, 'Checked', 'off');
+            switch this.visualization.displaySize
+                case 512
+                    set(this.m_settings_displaySize_512, 'Checked', 'on');
+                case 256
+                    set(this.m_settings_displaySize_256, 'Checked', 'on');
+                case 128
+                    set(this.m_settings_displaySize_128, 'Checked', 'on');
+                case 64
+                    set(this.m_settings_displaySize_64, 'Checked', 'on');
+                otherwise
+                    set(this.m_settings_displaySize_other, 'Checked', 'on');                
+            end
+
+        end
+        function checkAnisotropicInterpolationType(this)
+
+            set(this.m_settings_anisotropicInterpolationType_nearest, 'Checked', 'off');
+            set(this.m_settings_anisotropicInterpolationType_bilinear, 'Checked', 'off');
+            set(this.m_settings_anisotropicInterpolationType_bicubic, 'Checked', 'off');
+            set(this.m_settings_anisotropicInterpolationType_box, 'Checked', 'off');
+            set(this.m_settings_anisotropicInterpolationType_lanczos2, 'Checked', 'off');
+            set(this.m_settings_anisotropicInterpolationType_lanczos3, 'Checked', 'off');
+
+            switch this.visualization.anisotropicInterpolationType
+                case 'nearest'
+                    set(this.m_settings_anisotropicInterpolationType_nearest, 'Checked', 'on');
+                case 'bilinear'
+                    set(this.m_settings_anisotropicInterpolationType_bilinear, 'Checked', 'on');
+                case 'bicubic'
+                    set(this.m_settings_anisotropicInterpolationType_bicubic, 'Checked', 'on');
+                case 'box'
+                    set(this.m_settings_anisotropicInterpolationType_box, 'Checked', 'on');
+                case 'lanczos2'
+                    set(this.m_settings_anisotropicInterpolationType_lanczos2, 'Checked', 'on');
+                case 'lanczos3'
+                    set(this.m_settings_anisotropicInterpolationType_lanczos3, 'Checked', 'on');
+            end                
+
+        end
+        function checkBufferType(this)
+            set(this.m_settings_bufferType_wholeImage, 'Checked', 'off');
+            set(this.m_settings_bufferType_cubed, 'Checked', 'off');
+
+            switch this.image.bufferType
+                case 'whole'
+                    set(this.m_settings_bufferType_wholeImage, 'Checked', 'on');
+                case 'cubed'
+                    set(this.m_settings_bufferType_cubed, 'Checked', 'on');
+            end
+        end
+
 
     end
     
+    methods (Static)
+        
+        
+    end
    
 end
