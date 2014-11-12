@@ -286,7 +286,8 @@ classdef Viewer < handle
             this.fileIO.thisFolder = thisPath;
             addpath(genpath(thisPath));
             
-            this.image = Data({[3 6], [3 6], [0 3]}, [], [1 1 3], [128 128 128], 'cubed', 'single', [], []);
+            this.image = Data({[3 6], [3 6], [0 3]}, [], [1 1 3], ...
+                [128 128 128], 'cubed', 'single', [], [], [0 0 0]);
             
 
         end
@@ -417,46 +418,6 @@ classdef Viewer < handle
         %% Menu callbacks
         function m_file_loadImage_fromCubedData_callback(this, ~, ~)
 
-%             % Get the directory
-%             folder = uigetdir(this.fileIO.defaultFolder, 'Select dataset folder');
-%             if folder == 0
-%                 return;
-%             else
-%                 this.fileIO.loadImageFolder = folder;
-%             end
-% 
-%             % Dialog box to specify the range which will be loaded
-%             range = inputdlg( ...
-%                 {   'From (x, y, z)', 'To (x, y, z)', ...
-%                     'Anisotropy factors (x, y, z)' ...
-%                 }, ...
-%                 'Specify range...', ...
-%                 1, ...
-%                 {   [num2str(this.image.cubeRange{1}(1)) ', ' num2str(this.image.cubeRange{2}(1)) ', ' num2str(this.image.cubeRange{3}(1))], ...
-%                     [num2str(this.image.cubeRange{1}(2)) ', ' num2str(this.image.cubeRange{2}(2)) ', ' num2str(this.image.cubeRange{3}(2))], ...
-%                     [num2str(this.image.anisotropic(1)), ', ' num2str(this.image.anisotropic(2)), ', ', num2str(this.image.anisotropic(3))] ...
-%                 });
-%             rangeFrom = strsplit(range{1}, {', ', ','});
-%             rangeTo = strsplit(range{2}, {', ', ','});
-%             rangeX = [str2double(rangeFrom{1}) str2double(rangeTo{1})];
-%             rangeY = [str2double(rangeFrom{2}) str2double(rangeTo{2})];
-%             rangeZ = [str2double(rangeFrom{3}) str2double(rangeTo{3})];
-%             anisotropic = strsplit(range{3}, {', ', ','});
-% 
-%             this.image.anisotropic = cellfun(@(x) str2double(x), anisotropic);
-%             this.image.cubeRange = {rangeX, rangeY, rangeZ};
-% 
-%             if strcmp(this.image.bufferType, 'whole')
-%                 this.image.image = main_loadImage(rangeX, rangeY, rangeZ);
-%             elseif strcmp(this.image.bufferType, 'cubed')
-%                 this.image.image = cell(rangeX(2)+1, rangeY(2)+1, rangeZ(2)+1);
-%             else
-%                 EX.identifier = 'Viewer: Unknown buffer type';
-%                 EX.message = ['Buffer type ' this.image.bufferType 'is invalid.'];
-%                 EX.stack = [];
-%                 EX.solution = 'No known solution found.';
-%                 this.throwException(EX, 'ERROR: Unknown buffer type');
-%             end
             if isempty(this.image.sourceFolder)
                 this.image.sourceFolder = this.fileIO.defaultFolder;
             end
@@ -593,10 +554,10 @@ classdef Viewer < handle
             this.overlay{length(this.overlay) + 1} ...
                 = Data( ...
                 [], [], this.image.anisotropic, [], ...
-                this.image.bufferType, [], 'm-File');
+                this.image.bufferType, [], this.fileIO.defaultFolder, 'm-file', [0,0,0]);
             
             % Load the image
-            this.overlay(length(this.overlay)).loadData();
+            this.overlay{length(this.overlay)}.loadDataDlg();
 
         end
 
