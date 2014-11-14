@@ -1,0 +1,34 @@
+classdef Visualization
+    
+    properties
+        data
+        currentPosition % [x y z]
+        displaySize     % [x y z]
+        bSectionalPlanes
+        bOverlayObjects
+        spacerSize
+        anisotropicInterpolationType
+        bufferDelete
+    end
+    
+    methods
+        
+        %% Initialization
+        
+        function vis = Visualization(varargin)
+            vis.data = varargin{1};
+            vis.currentPosition = varargin{2};
+            vis.displaySize = varargin{3};
+            vis.bSectionalPlanes = varargin{4};
+            vis.bOverlayObjects = varargin{5};
+            vis.spacerSize = varargin{6};
+            vis.anisotropicInterpolationType = varargin{7};
+            vis.bufferDelete = varargin{8};
+        end
+        
+        %% Operations
+        
+        
+    end
+    
+end

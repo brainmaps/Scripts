@@ -262,8 +262,6 @@ classdef Viewer < handle
         %% MainWindow callbacks
         function this_closeRequestFcn(this, ~, ~)
             delete(this.Figure);
-            delete(this.image);
-            delete(this.visualization);
             delete(this);
         end
         function this_resizeFcn(MainWindow, hObject, ~)
@@ -660,7 +658,7 @@ classdef Viewer < handle
             imageXZ = zeros(n(3), n(1));
             imageZY = zeros(n(2), n(3));
             
-            [imageXY, imageXZ, imageZY] = this.image.createDisplayPlanes ...
+            [imageXY, imageXZ, imageZY] = createDisplayPlanes ...
                 (imageXY, imageXZ, imageZY, this.visualization, 'replace');
 
 
@@ -669,27 +667,24 @@ classdef Viewer < handle
 %     %         tic
             imageXY = jh_convertGray2RGB(imageXY);
             imageXZ = jh_convertGray2RGB(imageXZ);
-            imageZY = jh_convertGray2RGB(imageZY);
+            imageYZ = jh_convertGray2RGB(imageYZ);
 %     %         toc
 % 
 %             % Resize the images
 %     %         tic
 %             
-
-            ds = this.visualization.displaySize;
-            
             anisotrType = this.visualization.anisotropicInterpolationType;
-            if this.visualization.anisotropyFactor(1) ~= 1 || this.visualization.anisotropyFactor(2) ~= 1
+            if this.image.anisotropic(1) ~= 1 || this.image.anisotropic(2) ~= 1
                 imageXY = imresize(imageXY, [ds, ds], anisotrType);
                 imageXY(imageXY < 0) = 0;
             end
-            if this.visualization.anisotropyFactor(1) ~= 1 || this.visualization.anisotropyFactor(3) ~= 1
+            if this.image.anisotropic(1) ~= 1 || this.image.anisotropic(3) ~= 1
                 imageXZ = imresize(imageXZ, [ds, ds], anisotrType);
                 imageXZ(imageXZ < 0) = 0;
             end
-            if this.visualization.anisotropyFactor(2) ~= 1 || this.visualization.anisotropyFactor(3) ~= 1
-                imageZY = imresize(imageZY, [ds, ds], anisotrType);
-                imageZY(imageZY < 0) = 0;
+            if this.image.anisotropic(2) ~= 1 || this.image.anisotropic(3) ~= 1
+                imageYZ = imresize(imageYZ, [ds, ds], anisotrType);
+                imageYZ(imageYZ < 0) = 0;
             end
 %     %         toc
 % 
@@ -697,7 +692,7 @@ classdef Viewer < handle
             % White dot in the middle
             imageXY(ds/2, ds/2, :) = 1;
             imageXZ(ds/2, ds/2, :) = 1;
-            imageZY(ds/2, ds/2, :) = 1;
+            imageYZ(ds/2, ds/2, :) = 1;
 
             if this.visualization.bSectionalPlanes
                 % Red, greed and blue lines
@@ -705,8 +700,8 @@ classdef Viewer < handle
                 imageXY(ds/2, :, 2) = 1;
                 imageXZ(:, ds/2, 3) = 1;
                 imageXZ(ds/2, :, 1) = 1;
-                imageZY(ds/2, :, 2) = 1;
-                imageZY(:,ds/2, 1) = 1;
+                imageYZ(ds/2, :, 2) = 1;
+                imageYZ(:,ds/2, 1) = 1;
 
                 % Border around each image
                 imageXY(:, 1:2, 1) = 1;
@@ -717,10 +712,10 @@ classdef Viewer < handle
                 imageXZ(:, end-1:end, 2) = 1;
                 imageXZ(1:2, :, 2) = 1;
                 imageXZ(end-1:end, :, 2) = 1;
-                imageZY(:, 1:2, 3) = 1;
-                imageZY(:, end-1:end, 3) = 1;
-                imageZY(1:2, :, 3) = 1;
-                imageZY(end-1:end, :, 3) = 1;
+                imageYZ(:, 1:2, 3) = 1;
+                imageYZ(:, end-1:end, 3) = 1;
+                imageYZ(1:2, :, 3) = 1;
+                imageYZ(end-1:end, :, 3) = 1;
 
             end
 
@@ -731,7 +726,7 @@ classdef Viewer < handle
 %             showImage(:,:,2) = backColor(2);
 %             showImage(:,:,3) = backColor(3);
             showImage(1:ds, 1:ds, :) = imageXY;
-            showImage(1:ds, ds+spacer+1:2*ds+spacer, :) = imageZY;
+            showImage(1:ds, ds+spacer+1:2*ds+spacer, :) = imageYZ;
             showImage(ds+spacer+1:2*ds+spacer, 1:ds, :) = imageXZ;
 
             % Show the image
