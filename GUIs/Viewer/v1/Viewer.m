@@ -615,24 +615,9 @@ classdef Viewer < handle
 %             set(this.Display, 'uicontextmenu', this.cm_images);
 
         end
-                
-%         function loadImage(this)
-%             
-%             im = jh_openCubeRange( ...
-%                 this.fileIO.loadImageFolder, '', ...
-%                 'cubeSize', this.image.cubeSize, ...
-%                 'range', this.image.cubeRange{1}, this.image.cubeRange{2}, this.image.cubeRange{3}, ...
-%                 'dataType', this.mainSettings.prefType, ...
-%                 'outputType', 'cubed', ...
-%                 'fileType', 'auto');
-% 
-%             this.image.image = cellfun(@(x) x/255, im, 'UniformOutput', false);
-% 
-%         end
 
         function displayCurrentPosition(this, type)
-            
-            
+       
             % Abort if nothing has changed
             if strcmp(type, 'checkForChange');
                 if ~this.checkForChange('getset')
@@ -646,84 +631,51 @@ classdef Viewer < handle
             % Load the desired part of the image (if not already open)
             if strcmp(this.image.bufferType, 'cubed')
                 this.image.loadVisibleSubImage(this.visualization);
-            else 
-%                 for i = 1:3
-%                     minVisibleCube(i) = this.image.cubeRange{i}(1);
-%                     maxVisibleCube(i) = this.image.cubeRange{i}(2);
-%                 end
+            else
+                
             end
             
             n = round(this.visualization.displaySize ./ this.visualization.anisotropyFactor / 2) *2;
             
             % Pre-define images 
-            imageXY = zeros(n(2), n(1));
-            imageXZ = zeros(n(3), n(1));
-            imageZY = zeros(n(2), n(3));
-            
-            [imageXY, imageXZ, imageZY] = this.image.createDisplayPlanes ...
-                (imageXY, imageXZ, imageZY, this.visualization, 'replace');
+            planes = DisplayPlanes( ...
+                zeros(n(2), n(1)), ...  % xy
+                zeros(n(3), n(1)), ...  % xz
+                zeros(n(2), n(3)) ...   % zy
+                );
+
+            % Draw the background image
+            [planes] = this.image.createDisplayPlanes ...
+                (planes, this.visualization, 'replace');
 
             % Convert to RGB
-            imageXY = jh_convertGray2RGB(imageXY);
-            imageXZ = jh_convertGray2RGB(imageXZ);
-            imageZY = jh_convertGray2RGB(imageZY);
+            planes.toRGB();
+
+            ds = this.visualization.displaySize;
 
             % Resize the images
-            ds = this.visualization.displaySize;
-            
-            anisotrType = this.visualization.anisotropicInterpolationType;
-            if this.visualization.anisotropyFactor(1) ~= 1 || this.visualization.anisotropyFactor(2) ~= 1
-                imageXY = imresize(imageXY, [ds, ds], anisotrType);
-                imageXY(imageXY < 0) = 0;
-            end
-            if this.visualization.anisotropyFactor(1) ~= 1 || this.visualization.anisotropyFactor(3) ~= 1
-                imageXZ = imresize(imageXZ, [ds, ds], anisotrType);
-                imageXZ(imageXZ < 0) = 0;
-            end
-            if this.visualization.anisotropyFactor(2) ~= 1 || this.visualization.anisotropyFactor(3) ~= 1
-                imageZY = imresize(imageZY, [ds, ds], anisotrType);
-                imageZY(imageZY < 0) = 0;
-            end
+            planes.resize( ...
+                this.visualization.anisotropyFactor, ...
+                ds, ...
+                this.visualization.anisotropicInterpolationType ...
+                );
             
             % White dot in the middle
-            imageXY(ds/2, ds/2, :) = 1;
-            imageXZ(ds/2, ds/2, :) = 1;
-            imageZY(ds/2, ds/2, :) = 1;
+            planes.addWhiteDot([ds, ds, ds]);
 
             if this.visualization.bSectionalPlanes
-                % Red, greed and blue lines
-                imageXY(:, ds/2, 3) = 1;
-                imageXY(ds/2, :, 2) = 1;
-                imageXZ(:, ds/2, 3) = 1;
-                imageXZ(ds/2, :, 1) = 1;
-                imageZY(ds/2, :, 2) = 1;
-                imageZY(:,ds/2, 1) = 1;
-
-                % Border around each image
-                imageXY(:, 1:2, 1) = 1;
-                imageXY(:, end-1:end, 1) = 1;
-                imageXY(1:2, :, 1) = 1;
-                imageXY(end-1:end, :, 1) = 1;
-                imageXZ(:, 1:2, 2) = 1;
-                imageXZ(:, end-1:end, 2) = 1;
-                imageXZ(1:2, :, 2) = 1;
-                imageXZ(end-1:end, :, 2) = 1;
-                imageZY(:, 1:2, 3) = 1;
-                imageZY(:, end-1:end, 3) = 1;
-                imageZY(1:2, :, 3) = 1;
-                imageZY(end-1:end, :, 3) = 1;
+%                 % Red, greed and blue lines and border around each image
+                planes.addSectionalPlanes([ds, ds, ds]);
 
             end
-
+            
+            % Create the final complete image
             spacer = this.visualization.spacerSize;
-%             backColor = this.mainSettings.windowBackColor;
             showImage = ones(ds*2 + spacer, ds*2 + spacer, 3);
-%             showImage(:,:,1) = backColor(1);
-%             showImage(:,:,2) = backColor(2);
-%             showImage(:,:,3) = backColor(3);
-            showImage(1:ds, 1:ds, :) = imageXY;
-            showImage(1:ds, ds+spacer+1:2*ds+spacer, :) = imageZY;
-            showImage(ds+spacer+1:2*ds+spacer, 1:ds, :) = imageXZ;
+            
+            showImage(1:ds, 1:ds, :) = planes.XY;
+            showImage(1:ds, ds+spacer+1:2*ds+spacer, :) = planes.ZY;
+            showImage(ds+spacer+1:2*ds+spacer, 1:ds, :) = planes.XZ;
 
             % Show the image
             set(this.Display, 'cdata', showImage);
@@ -748,68 +700,6 @@ classdef Viewer < handle
             end
         end
         
-        function [minVisibleCube, maxVisibleCube] = createVisibleSubImage(this)
-            persistent cubeMap
-
-            if isempty(cubeMap)
-                cubeMap = zeros(size(this.image.image));
-            end
-            cubeMap = cubeMap - 1;
-            cubeMap(cubeMap < 0) = 0;
-            
-            % These are [x y z]-zero-based
-            position = this.visualization.currentPosition;
-            cubeSize = this.image.cubeSize;
-            cubeRange = this.image.cubeRange;
-
-            minVisible = position - this.visualization.displaySize / 2;
-            minVisibleCube = floor(minVisible ./ cubeSize);
-            maxVisible = position + this.visualization.displaySize / 2;
-            maxVisibleCube = floor(maxVisible ./ cubeSize);
-            
-            for i = 1:3
-                if minVisibleCube(i) < this.image.cubeRange{i}(1)
-                    minVisibleCube(i) = cubeRange{i}(1);
-                end
-                if maxVisibleCube(i) > this.image.cubeRange{i}(2)
-                    maxVisibleCube(i) = cubeRange{i}(2);
-                end
-            end
-
-            for x = minVisibleCube(1) : maxVisibleCube(1)
-                for y = minVisibleCube(2) : maxVisibleCube(2)
-                    for z = minVisibleCube(3) : maxVisibleCube(3)
-
-                        if isempty(this.image.image{y+1, x+1, z+1})
-
-                            this.image.image{y+1, x+1, z+1} = jh_openCubeRange( ...
-                                this.image.sourceFolder, '', ...
-                                'cubeSize', [128 128 128], ...
-                                'range', 'oneCube', [x, y, z], ...
-                                'dataType', this.image.dataType, ...
-                                'outputType', 'one', ...
-                                'fileType', 'auto') / 255;
-
-                        end
-
-                        cubeMap(y+1, x+1, z+1) = this.visualization.bufferDelete;
-
-                    end
-                end
-            end
-
-            for x = this.image.cubeRange{1}(1) : this.image.cubeRange{1}(2)
-                for y = this.image.cubeRange{2}(1) : this.image.cubeRange{2}(2)
-                    for z = this.image.cubeRange{3}(1) : this.image.cubeRange{3}(2)
-                        if cubeMap(y+1, x+1, z+1) == 0
-                            this.image.image{y+1, x+1, z+1} = [];
-                        end
-                    end
-                end
-            end
-
-        end
-
         function activateObjects(this)
         
             if isempty(this.image.image)
