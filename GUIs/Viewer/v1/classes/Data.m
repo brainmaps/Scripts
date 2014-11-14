@@ -83,10 +83,6 @@ classdef Data < handle
 
                     if strcmp(this.bufferType, 'whole')
                         this.loadCubedImage();
-                        for i = 1:3
-                            minLoadedCube(i) = this.image.cubeRange{i}(1);
-                            maxLoadedCube(i) = this.image.cubeRange{i}(2);
-                        end
                     elseif strcmp(this.bufferType, 'cubed')
                         this.image = cell(rangeX(2)+1, rangeY(2)+1, rangeZ(2)+1);
                     else
@@ -144,7 +140,7 @@ classdef Data < handle
             
             im = jh_openCubeRange( ...
                 this.sourceFolder, '', ...
-                'cubeSize', this.image.cubeSize, ...
+                'cubeSize', this.cubeSize, ...
                 'range', this.cubeRange{1}, this.cubeRange{2}, this.cubeRange{3}, ...
                 'dataType', this.dataType, ...
                 'outputType', 'cubed', ...
@@ -152,6 +148,11 @@ classdef Data < handle
 
             this.image = cellfun(@(x) x/255, im, 'UniformOutput', false);
 
+            for i = 1:3
+                this.minLoadedCube(i) = this.cubeRange{i}(1);
+                this.maxLoadedCube(i) = this.cubeRange{i}(2);
+            end
+                    
         end
         
         %% Create display planes

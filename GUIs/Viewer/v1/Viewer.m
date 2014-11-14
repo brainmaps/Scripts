@@ -525,7 +525,7 @@ classdef Viewer < handle
 
             this.image.bufferType = 'whole';
             this.checkBufferType();
-            this.loadImage();
+            this.image.loadCubedImage();
             this.displayCurrentPosition('');
             this.activateObjects();
 
@@ -616,19 +616,19 @@ classdef Viewer < handle
 
         end
                 
-        function loadImage(this)
-            
-            im = jh_openCubeRange( ...
-                this.fileIO.loadImageFolder, '', ...
-                'cubeSize', this.image.cubeSize, ...
-                'range', this.image.cubeRange{1}, this.image.cubeRange{2}, this.image.cubeRange{3}, ...
-                'dataType', this.mainSettings.prefType, ...
-                'outputType', 'cubed', ...
-                'fileType', 'auto');
-
-            this.image.image = cellfun(@(x) x/255, im, 'UniformOutput', false);
-
-        end
+%         function loadImage(this)
+%             
+%             im = jh_openCubeRange( ...
+%                 this.fileIO.loadImageFolder, '', ...
+%                 'cubeSize', this.image.cubeSize, ...
+%                 'range', this.image.cubeRange{1}, this.image.cubeRange{2}, this.image.cubeRange{3}, ...
+%                 'dataType', this.mainSettings.prefType, ...
+%                 'outputType', 'cubed', ...
+%                 'fileType', 'auto');
+% 
+%             this.image.image = cellfun(@(x) x/255, im, 'UniformOutput', false);
+% 
+%         end
 
         function displayCurrentPosition(this, type)
             
@@ -663,19 +663,12 @@ classdef Viewer < handle
             [imageXY, imageXZ, imageZY] = this.image.createDisplayPlanes ...
                 (imageXY, imageXZ, imageZY, this.visualization, 'replace');
 
-
-%     %         toc
-%             % Convert to RGB
-%     %         tic
+            % Convert to RGB
             imageXY = jh_convertGray2RGB(imageXY);
             imageXZ = jh_convertGray2RGB(imageXZ);
             imageZY = jh_convertGray2RGB(imageZY);
-%     %         toc
-% 
-%             % Resize the images
-%     %         tic
-%             
 
+            % Resize the images
             ds = this.visualization.displaySize;
             
             anisotrType = this.visualization.anisotropicInterpolationType;
@@ -691,9 +684,7 @@ classdef Viewer < handle
                 imageZY = imresize(imageZY, [ds, ds], anisotrType);
                 imageZY(imageZY < 0) = 0;
             end
-%     %         toc
-% 
-% 
+            
             % White dot in the middle
             imageXY(ds/2, ds/2, :) = 1;
             imageXZ(ds/2, ds/2, :) = 1;
