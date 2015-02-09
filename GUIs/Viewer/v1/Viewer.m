@@ -1,14 +1,20 @@
+
 classdef Viewer < handle
-    
     %%
     
     properties
         Figure
-        AxesDisplay
+%         AxesDisplay
+        AxesDisplayXY
+        AxesDisplayXZ
+        AxesDisplayZY
         PanelMain
         PanelDisplays
         TextDisplay
-        Display
+%         Display
+        DisplayXY
+        DisplayXZ
+        DisplayZY
         
         prefType
         windowBackColor
@@ -75,14 +81,39 @@ classdef Viewer < handle
     %%
     methods
         %% Constructor
-        function MainWindow = Viewer()
+        
+        function MainWindow = Viewer(varargin)
+            %
+            % SYNOPSIS
+            %   h = Viewer();
+            %   h = Viewer(___, 'name', name)
+            %
+            % INPUT
+            %   name: Name of the window
             
+            %% Check input
+            
+            % Set defaults
+            name = 'Viewer';
+                
+            % Check input
+            i = 0;
+            while i < length(varargin)
+                i = i+1;
+        
+                if strcmp(varargin{i}, 'name')
+                    name = varargin{i+1};
+                    i = i+1;
+                end
+                
+            end
+                        
             %% The window
             
             % Main window
             MainWindow.Figure = figure( ...
                 'MenuBar', 'none', ...
-                'Name', 'Viewer', ...
+                'Name', name, ...
                 'NumberTitle', 'off', ...
                 'ToolBar', 'none', ...
                 'Position', MainWindow.initialWindowPosition, ...
@@ -110,10 +141,18 @@ classdef Viewer < handle
                 'BorderType', 'etchedin', ...
                 'Units', 'pixels');
             % Main display
-            MainWindow.AxesDisplay = axes('Parent', MainWindow.PanelDisplays, ...
-                'Tag', 'axesDisplay', ...
+            MainWindow.AxesDisplayXY = axes('Parent', MainWindow.PanelDisplays, ...
+                'Tag', 'axesDisplayXY', ...
                 'Units', 'normalized', ...
-                'Position', [.01, .01, .98, .98]);
+                'Position', [.01, .51, .48, .48]);
+            MainWindow.AxesDisplayXZ = axes('Parent', MainWindow.PanelDisplays, ...
+                'Tag', 'axesDisplayXZ', ...
+                'Units', 'normalized', ...
+                'Position', [.01, .01, .48, .48]);
+            MainWindow.AxesDisplayZY = axes('Parent', MainWindow.PanelDisplays, ...
+                'Tag', 'axesDisplayZY', ...
+                'Units', 'normalized', ...
+                'Position', [.51, .51, .48, .48]);
             % Text display
             MainWindow.TextDisplay = uicontrol(MainWindow.PanelDisplays, ...
                 'Tag', 'textAvailableClasses', ...
@@ -263,7 +302,7 @@ classdef Viewer < handle
         function this_closeRequestFcn(this, ~, ~)
             delete(this.Figure);
             delete(this.image);
-            delete(this.visualization);
+%             delete(this.visualization);
             delete(this);
         end
         function this_resizeFcn(MainWindow, hObject, ~)
@@ -279,15 +318,17 @@ classdef Viewer < handle
         end
         function this_createFcn(this, ~, ~)
             
-            % Add all folders within the main path
-            thisPath = mfilename('fullpath');
-            posSlash = find(thisPath == filesep, 1, 'last');
+            % Determine the path of this script
+            t = mfilename('fullpath');
+            posSlash = find(t == filesep, 1, 'last');
             posSlash = posSlash(1);
-            thisPath = thisPath(1:posSlash);
+            thisPath = t(1:posSlash);
+
+            % Add all folders within the main path
             this.fileIO = FileIO(thisPath);
             this.fileIO.thisFolder = thisPath;
-            addpath(genpath(thisPath));
             
+            % Initialize some stuff
             this.image = Data({[3 6], [3 6], [0 3]}, [], [1 1 1], ...
                 [128 128 128], 'cubed', 'single', [], [], [0 0 0]);
             this.visualization = Visualization([0, 0, 0], 256, true, ...
@@ -333,7 +374,16 @@ classdef Viewer < handle
                     persMousePosition = this.userInput.mouseEvent.downAt;
                 end
                 
-                mousePosition = round(get(this.AxesDisplay, 'CurrentPoint'));
+                switch this.userInput.mouseEvent.downOn
+                    case 'xy'
+                        mousePosition = round(get(this.AxesDisplayXY, 'CurrentPoint'));
+                    case 'xz'
+                        mousePosition = round(get(this.AxesDisplayXZ, 'CurrentPoint'));
+                    case 'zy'
+                        mousePosition = round(get(this.AxesDisplayZY, 'CurrentPoint'));
+                end
+
+%                 mousePosition = round(get(this.AxesDisplay, 'CurrentPoint'));
                 mousePosition = mousePosition(2, 1:2);
                 diffMousePosition = mousePosition - persMousePosition;
                 persMousePosition = mousePosition;
@@ -351,7 +401,7 @@ classdef Viewer < handle
                         case 'xz'
                             this.visualization.currentPosition(1) = round(this.visualization.currentPosition(1) - diffMousePosition(1) / this.image.anisotropic(1));
                             this.visualization.currentPosition(3) = round(this.visualization.currentPosition(3) - diffMousePosition(2) / this.image.anisotropic(3));
-                        case 'yz'
+                        case 'zy'
                             this.visualization.currentPosition(2) = round(this.visualization.currentPosition(2) - diffMousePosition(2) / this.image.anisotropic(2));
                             this.visualization.currentPosition(3) = round(this.visualization.currentPosition(3) - diffMousePosition(1) / this.image.anisotropic(3));
                     end
@@ -373,8 +423,10 @@ classdef Viewer < handle
         function this_windowScrollWheelFcn(this, ~, eventdata)
 
             imageInFocus = this.getImageInFocus();
+            
             if ~isempty(imageInFocus)
-
+                
+                
                 if this.userInput.keyEvent.ctrlDown
 
                     this.visualization.displaySize = this.visualization.displaySize + eventdata.VerticalScrollCount * 10;
@@ -392,7 +444,7 @@ classdef Viewer < handle
                             this.visualization.currentPosition(3) = this.visualization.currentPosition(3) - eventdata.VerticalScrollCount;
                         case 'xz'
                             this.visualization.currentPosition(2) = this.visualization.currentPosition(2) - eventdata.VerticalScrollCount;
-                        case 'yz'
+                        case 'zy'
                             this.visualization.currentPosition(1) = this.visualization.currentPosition(1) - eventdata.VerticalScrollCount;
                     end
                     this.checkForOutOfBounds();
@@ -407,16 +459,31 @@ classdef Viewer < handle
 
         
         %% Display callbacks
-        function display_buttonDownFcn(this, ~, ~)
-
-            % Get the plain
-            this.userInput.mouseEvent.downOn = this.getImageInFocus();
-
+        
+        function displayXY_buttonDownFcn(this, ~, ~)
+            this.userInput.mouseEvent.downOn = 'xy';
             % Get the position
-            pos = round(get(this.AxesDisplay, 'CurrentPoint'));
+            pos = round(get(this.AxesDisplayXY, 'CurrentPoint'));
             this.userInput.mouseEvent.downAt = pos(2, 1:2); clear pos;
 
         end
+
+        function displayXZ_buttonDownFcn(this, ~, ~)
+            this.userInput.mouseEvent.downOn = 'xz';
+            % Get the position
+            pos = round(get(this.AxesDisplayXZ, 'CurrentPoint'));
+            this.userInput.mouseEvent.downAt = pos(2, 1:2); clear pos;
+
+        end
+
+        function displayZY_buttonDownFcn(this, ~, ~)
+            this.userInput.mouseEvent.downOn = 'zy';
+            % Get the position
+            pos = round(get(this.AxesDisplayZY, 'CurrentPoint'));
+            this.userInput.mouseEvent.downAt = pos(2, 1:2); clear pos;
+
+        end
+
         
         %% Menu callbacks
         function m_file_loadImage_fromCubedData_callback(this, ~, ~)
@@ -609,10 +676,14 @@ classdef Viewer < handle
         
         function createImageDisplay(this)
 
-            dispSize = this.visualization.displaySize * 2 + this.visualization.spacerSize;
-            this.Display = imshow(zeros(dispSize), 'Parent', this.AxesDisplay);
-            set(this.Display, 'ButtonDownFcn', @this.display_buttonDownFcn);
-%             set(this.Display, 'uicontextmenu', this.cm_images);
+            this.DisplayXY = imshow(zeros(this.visualization.displaySize), 'Parent', this.AxesDisplayXY);
+            set(this.DisplayXY, 'ButtonDownFcn', @this.displayXY_buttonDownFcn);
+
+            this.DisplayXZ = imshow(zeros(this.visualization.displaySize), 'Parent', this.AxesDisplayXZ);
+            set(this.DisplayXZ, 'ButtonDownFcn', @this.displayXZ_buttonDownFcn);
+            
+            this.DisplayZY = imshow(zeros(this.visualization.displaySize), 'Parent', this.AxesDisplayZY);
+            set(this.DisplayZY, 'ButtonDownFcn', @this.displayZY_buttonDownFcn);
 
         end
 
@@ -669,16 +740,13 @@ classdef Viewer < handle
 
             end
             
-            % Create the final complete image
-            spacer = this.visualization.spacerSize;
-            showImage = ones(ds*2 + spacer, ds*2 + spacer, 3);
-            
-            showImage(1:ds, 1:ds, :) = planes.XY;
-            showImage(1:ds, ds+spacer+1:2*ds+spacer, :) = planes.ZY;
-            showImage(ds+spacer+1:2*ds+spacer, 1:ds, :) = planes.XZ;
-
             % Show the image
-            set(this.Display, 'cdata', showImage);
+%             set(this.Display, 'cdata', showImage);
+%             tic
+            set(this.DisplayXY, 'cdata', planes.XY);
+            set(this.DisplayXZ, 'cdata', planes.XZ);
+            set(this.DisplayZY, 'cdata', planes.ZY);
+%             toc
 
         end
 
@@ -760,29 +828,42 @@ classdef Viewer < handle
     % 
         end
         
-        function imageName = getImageInFocus(this)
+        function [imageName, position] = getImageInFocus(this)
         
             imageName = [];
+            position = [];
             n = this.visualization.displaySize;
-
-    %         axesHandle  = get(hObject,'Parent');
-            coordinates = get(this.AxesDisplay,'CurrentPoint'); 
-            coordinates = round(coordinates(1,1:2));
-
-            % Get the image in focus
-            if coordinates(1) <= n && coordinates(1) >= 1
-                if coordinates(2) <= n && coordinates(2) >= 1
-                    imageName = 'xy';                
-                elseif coordinates(2) > n+5 && coordinates(2) <= 2*n+5
-                    imageName = 'xz';                
-                end
-            elseif coordinates(1) > n+5 && coordinates(1) <= 2*n+5
-                if coordinates(2) <= n && coordinates(2) >= 1
-                    imageName = 'yz';                
-                elseif coordinates(2) > n+5 && coordinates(2) <= 2*n+5
-                    imageName = 'magnification';                
-                end
+            
+            % Check if image XY is in focus
+            coord = get(this.AxesDisplayXY, 'CurrentPoint');
+            coord = round(coord - [1e-10, 0, 0; 0, 0, 0]);
+            if coord(1) > 0 && coord(1) <= n && ...
+                    coord(3) > 0 && coord(3) <= n
+                imageName = 'xy';
+                %position = [100 100 100];
+                return;
             end
+            
+            % Check if image xz is in focus
+            coord = get(this.AxesDisplayXZ, 'CurrentPoint');
+            coord = round(coord - [1e-10, 0, 0; 0, 0, 0]);
+            if coord(1) > 0 && coord(1) <= n && ...
+                    coord(3) > 0 && coord(3) <= n
+                imageName = 'xz';
+                return;
+            end
+            
+            % Check if image zy is in focus
+            coord = get(this.AxesDisplayZY, 'CurrentPoint');
+            coord = round(coord - [1e-10, 0, 0; 0, 0, 0]);
+            if coord(1) > 0 && coord(1) <= n && ...
+                    coord(3) > 0 && coord(3) <= n 
+                imageName = 'zy';
+                return;
+            end
+            
+            return;
+            
         end
 
         function checkForOutOfBounds(this)
@@ -875,7 +956,6 @@ classdef Viewer < handle
                     set(this.m_settings_bufferType_cubed, 'Checked', 'on');
             end
         end
-
 
     end
     
