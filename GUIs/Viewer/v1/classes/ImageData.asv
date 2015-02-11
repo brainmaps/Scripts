@@ -152,17 +152,6 @@ classdef ImageData < handle
                 return;
             end
             
-            if ~strcmp(this.bufferType, 'cubed') && ...
-                    ~strcmp(this.bufferType, 'whole')
-                EX.identifier = 'Data: Unknown buffer type';
-                EX.message = ['Buffer type ' this.image.bufferType 'is invalid.'];
-                EX.stack = [];
-                EX.solution = 'Set buffer type correctly before attempting to load an image.';
-                this.throwException(EX, 'ERROR: Unknown buffer type');
-                status = -1;
-                return;
-            end
-            
             switch this.sourceType
                 case 'cubed'
                     status = this.loadFromCubedDataDlg();
@@ -399,10 +388,16 @@ classdef ImageData < handle
                 % The whole specified image will be loaded instantly
                 this.loadCubedImage();
             elseif strcmp(this.bufferType, 'cubed')
-                % An empty cell matrix is set up and is filled on demand
+                % 
                 this.image = cell(rangeX(2)+1, rangeY(2)+1, rangeZ(2)+1);
             else
-                % Does not happen!
+                EX.identifier = 'Data: Unknown buffer type';
+                EX.message = ['Buffer type ' this.image.bufferType 'is invalid.'];
+                EX.stack = [];
+                EX.solution = 'No known solution found.';
+                this.throwException(EX, 'ERROR: Unknown buffer type');
+                status = -1;
+                return;
             end
             
             status = 1;
