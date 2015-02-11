@@ -1,6 +1,21 @@
+% Viewer is a basic GUI-class including xy, xz, and zy displays for easy
+% navigation of volumetric image data.
+%
+% DEPENDENCIES
+%   Load the following path:
+%       .../Functions/v1/
+%
+% NOTES FOR DEVELOPMENT
+%
+%   Upon construction an object of class Data is initialized with a set of
+%   default properties. 
+%
+%   For correct image display with respect to anisotropy the property
+%   anisotropyFactor found in the visualization class is used. This enables
+%   the display to be adjusted if the image is already loaded. The correct
+%   anisotropy factors remain stored within the image object (class Data).
 
 classdef Viewer < handle
-    %%
     
     properties
         Figure
@@ -262,7 +277,6 @@ classdef Viewer < handle
                     'Label', 'Advanced', ...
                     'Separator', 'on', ...
                     'Enable', 'off');
-
             % Tools...
             MainWindow.m_tools = uimenu(MainWindow.Figure, ...
                 'Label', 'Tools');
@@ -298,6 +312,49 @@ classdef Viewer < handle
             MainWindow.this_afterCreationFcn();
         end
         
+        
+        %% Display callbacks
+        
+        function displayXY_buttonDownFcn(this, ~, ~)
+            this.userInput.mouseEvent.downOn = 'xy';
+            % Get the position
+            pos = round(get(this.AxesDisplayXY, 'CurrentPoint'));
+            this.userInput.mouseEvent.downAt = pos(2, 1:2); clear pos;
+
+        end
+
+        function displayXZ_buttonDownFcn(this, ~, ~)
+            this.userInput.mouseEvent.downOn = 'xz';
+            % Get the position
+            pos = round(get(this.AxesDisplayXZ, 'CurrentPoint'));
+            this.userInput.mouseEvent.downAt = pos(2, 1:2); clear pos;
+
+        end
+
+        function displayZY_buttonDownFcn(this, ~, ~)
+            this.userInput.mouseEvent.downOn = 'zy';
+            % Get the position
+            pos = round(get(this.AxesDisplayZY, 'CurrentPoint'));
+            this.userInput.mouseEvent.downAt = pos(2, 1:2); clear pos;
+
+        end
+
+        
+        %% Property get functions
+        function value = get.screenSize(~)
+            value = get(0,'ScreenSize');
+        end
+        function value = get.initialWindowPosition(MainWindow)
+            ws = MainWindow.defaultWindowSize;
+            if ws(1) > MainWindow.screenSize(3), ws(1) = MainWindow.screenSize(3); end
+            if ws(2) > MainWindow.screenSize(4), ws(2) = MainWindow.screenSize(4); end
+            value = [MainWindow.screenSize(3)/2 - ws(1)/2, MainWindow.screenSize(4)/2 - ws(2)/2, ws(1), ws(2)];
+        end
+        
+        
+    end
+    
+    methods (Access = protected)    
         %% MainWindow callbacks
         function this_closeRequestFcn(this, ~, ~)
             delete(this.Figure);
@@ -329,7 +386,7 @@ classdef Viewer < handle
             this.fileIO.thisFolder = thisPath;
             
             % Initialize some stuff
-            this.image = Data({[3 6], [3 6], [0 3]}, [], [1 1 1], ...
+            this.image = ImageData({[3 6], [3 6], [0 3]}, [], [1 1 3], ...
                 [128 128 128], 'cubed', 'single', [], [], [0 0 0]);
             this.visualization = Visualization([0, 0, 0], 256, true, ...
                 true, 5, 'bicubic', [1 1 3], 100);
@@ -396,14 +453,26 @@ classdef Viewer < handle
                     % This moves the image
                     switch this.userInput.mouseEvent.downOn
                         case 'xy'
-                            this.visualization.currentPosition(1) = round(this.visualization.currentPosition(1) - diffMousePosition(1) / this.image.anisotropic(1));
-                            this.visualization.currentPosition(2) = round(this.visualization.currentPosition(2) - diffMousePosition(2) / this.image.anisotropic(2));
+                            this.visualization.currentPosition(1) ...
+                                = round(this.visualization.currentPosition(1) ...
+                                - diffMousePosition(1) / this.visualization.anisotropyFactor(1));
+                            this.visualization.currentPosition(2) ...
+                                = round(this.visualization.currentPosition(2) ...
+                                - diffMousePosition(2) / this.visualization.anisotropyFactor(2));
                         case 'xz'
-                            this.visualization.currentPosition(1) = round(this.visualization.currentPosition(1) - diffMousePosition(1) / this.image.anisotropic(1));
-                            this.visualization.currentPosition(3) = round(this.visualization.currentPosition(3) - diffMousePosition(2) / this.image.anisotropic(3));
+                            this.visualization.currentPosition(1) ...
+                                = round(this.visualization.currentPosition(1) ...
+                                - diffMousePosition(1) / this.visualization.anisotropyFactor(1));
+                            this.visualization.currentPosition(3) ...
+                                = round(this.visualization.currentPosition(3) ...
+                                - diffMousePosition(2) / this.visualization.anisotropyFactor(3));
                         case 'zy'
-                            this.visualization.currentPosition(2) = round(this.visualization.currentPosition(2) - diffMousePosition(2) / this.image.anisotropic(2));
-                            this.visualization.currentPosition(3) = round(this.visualization.currentPosition(3) - diffMousePosition(1) / this.image.anisotropic(3));
+                            this.visualization.currentPosition(2) ...
+                                = round(this.visualization.currentPosition(2) ...
+                                - diffMousePosition(2) / this.visualization.anisotropyFactor(2));
+                            this.visualization.currentPosition(3) ...
+                                = round(this.visualization.currentPosition(3) ...
+                                - diffMousePosition(1) / this.visualization.anisotropyFactor(3));
                     end
                     this.checkForOutOfBounds();
 
@@ -458,46 +527,11 @@ classdef Viewer < handle
         end
 
         
-        %% Display callbacks
-        
-        function displayXY_buttonDownFcn(this, ~, ~)
-            this.userInput.mouseEvent.downOn = 'xy';
-            % Get the position
-            pos = round(get(this.AxesDisplayXY, 'CurrentPoint'));
-            this.userInput.mouseEvent.downAt = pos(2, 1:2); clear pos;
-
-        end
-
-        function displayXZ_buttonDownFcn(this, ~, ~)
-            this.userInput.mouseEvent.downOn = 'xz';
-            % Get the position
-            pos = round(get(this.AxesDisplayXZ, 'CurrentPoint'));
-            this.userInput.mouseEvent.downAt = pos(2, 1:2); clear pos;
-
-        end
-
-        function displayZY_buttonDownFcn(this, ~, ~)
-            this.userInput.mouseEvent.downOn = 'zy';
-            % Get the position
-            pos = round(get(this.AxesDisplayZY, 'CurrentPoint'));
-            this.userInput.mouseEvent.downAt = pos(2, 1:2); clear pos;
-
-        end
-
-        
         %% Menu callbacks
         function m_file_loadImage_fromCubedData_callback(this, ~, ~)
 
-            if isempty(this.image.sourceFolder)
-                this.image.sourceFolder = this.fileIO.defaultFolder;
-            end
-            this.image.sourceType = 'cubed';
-            this.image.loadDataDlg();
-
-            this.createImageDisplay();
-            this.displayCurrentPosition('');
-            this.activateObjects();
-
+            this.loadImageFromCubedData();
+            
         end
 %         function m_file_saveProject_callback(hObject, ~)
 %             handles = guidata(hObject);
@@ -624,7 +658,7 @@ classdef Viewer < handle
             this.overlay{length(this.overlay) + 1} ...
                 = Data( ...
                 [], [], this.image.anisotropic, [], ...
-                this.image.bufferType, [], this.fileIO.defaultFolder, 'm-file', [0,0,0]);
+                this.image.bufferType, [], this.fileIO.defaultFolder, 'matFile', [0,0,0]);
             
             % Load the image
             this.overlay{length(this.overlay)}.loadDataDlg();
@@ -632,17 +666,9 @@ classdef Viewer < handle
         end
 
         
-        %% Property get functions
-        function value = get.screenSize(~)
-            value = get(0,'ScreenSize');
-        end
-        function value = get.initialWindowPosition(MainWindow)
-            ws = MainWindow.defaultWindowSize;
-            if ws(1) > MainWindow.screenSize(3), ws(1) = MainWindow.screenSize(3); end
-            if ws(2) > MainWindow.screenSize(4), ws(2) = MainWindow.screenSize(4); end
-            value = [MainWindow.screenSize(3)/2 - ws(1)/2, MainWindow.screenSize(4)/2 - ws(2)/2, ws(1), ws(2)];
-        end
-        
+    end
+    
+    methods (Access = private)
         %% Other functions
         function throwException(~, EX, title)
 
@@ -955,6 +981,29 @@ classdef Viewer < handle
                 case 'cubed'
                     set(this.m_settings_bufferType_cubed, 'Checked', 'on');
             end
+        end
+        
+        function loadImageFromCubedData(this)
+           
+            if isempty(this.image.sourceFolder)
+                this.image.sourceFolder = this.fileIO.defaultFolder;
+            end
+            this.image.sourceType = 'cubed';
+            
+            % Selects data using a dialog window; returns 1 for success
+            success = this.image.loadDataDlg();
+            if success ~= 1
+                this.image.sourceType = [];
+                return;
+            end
+            
+            % Anisotropy also has to be set for display
+            this.visualization.anisotropyFactor = this.image.anisotropic;
+
+            this.createImageDisplay();
+            this.displayCurrentPosition('');
+            this.activateObjects();
+            
         end
 
     end

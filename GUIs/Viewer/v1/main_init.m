@@ -72,7 +72,7 @@ main.overlays = [];
 if strcmp(filesep, '\')
     main.fileIO.defaultFolder = 'D:\Julian\';
 else
-    main.fileIO.defaultFolder = '~/';
+    main.fileIO.defaultFolder = '/~/';
 end
 main.fileIO.saveProjectFile = [];
 main.fileIO.load.folder = [];
