@@ -238,7 +238,8 @@ elseif strcmp(outputType, 'cubed')
                 % Create path name of the desired cube
                 p = [path 'x' xs filesep 'y' ys filesep 'z' zs filesep thisName];
                 
-                data{y+1, x+1, z+1} = openCube(p, cubeSize, dataType);
+                data{y+1-rangeY(1), x+1-rangeX(1), z+1-rangeZ(1)} ...
+                    = openCube(p, cubeSize, dataType);
 
             end
 

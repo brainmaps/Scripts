@@ -5,6 +5,7 @@ classdef ImageData < handle
         image
         anisotropic     % [x, y, z]
         cubeSize        % [x, y, z]
+        totalImageSize  % [x, y, z]
         bufferType      % 'cubed', 'whole'
         dataType        % 'single', 'double', 'integer', ...
         sourceFolder
@@ -14,6 +15,8 @@ classdef ImageData < handle
     
     properties (SetAccess = protected)
         
+        % >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        % Check if this is really needed!
         minLoadedCube
         maxLoadedCube
         
@@ -179,53 +182,68 @@ classdef ImageData < handle
         
         function loadVisibleSubImage(this, vis)
             persistent cubeMap
-
-            if isempty(cubeMap)
+            
+            % cubeMap is a matrix of the size of the image cell array. It
+            % stores values for each image cubes describing for how long
+            % these were not seen on the display, i.e., if visible the
+            % value is set to an initial number and each time this function
+            % is called all values are decreased by one. 
+            if isempty(cubeMap) || isequal(size(cubeMap), size(this.image))
                 cubeMap = zeros(size(this.image));
             end
             cubeMap = cubeMap - 1;
             cubeMap(cubeMap < 0) = 0;
 
+            % Determine the range of the image which is visible
             minVisible = vis.currentPosition - vis.displaySize / 2;
             minVisibleCube = floor(minVisible ./ this.cubeSize);
             maxVisible = vis.currentPosition + vis.displaySize / 2;
             maxVisibleCube = floor(maxVisible ./ this.cubeSize);
             
+            % Check for out of bounds
             for i = 1:3
-                if minVisibleCube(i) < this.cubeRange{i}(1)
-                    minVisibleCube(i) = this.cubeRange{i}(1);
+                if minVisibleCube(i) < 0
+                    minVisibleCube(i) = 0;
                 end
-                if maxVisibleCube(i) > this.cubeRange{i}(2)
-                    maxVisibleCube(i) = this.cubeRange{i}(2);
+                if maxVisibleCube(i) > this.cubeRange{i}(2)-this.cubeRange{i}(1)
+                    maxVisibleCube(i) = this.cubeRange{i}(2)-this.cubeRange{i}(1);
                 end
             end
 
+            % Iterate over every visible image cube and load it into memory
             for x = minVisibleCube(1) : maxVisibleCube(1)
                 for y = minVisibleCube(2) : maxVisibleCube(2)
                     for z = minVisibleCube(3) : maxVisibleCube(3)
 
                         if isempty(this.image{y+1, x+1, z+1})
-
+                            
+                            xR = x + this.cubeRange{1}(1);
+                            yR = y + this.cubeRange{2}(1);
+                            zR = z + this.cubeRange{3}(1);
+                            
                             this.image{y+1, x+1, z+1} = jh_openCubeRange( ...
                                 this.sourceFolder, '', ...
                                 'cubeSize', [128 128 128], ...
-                                'range', 'oneCube', [x, y, z], ...
+                                'range', 'oneCube', [xR, yR, zR], ...
                                 'dataType', this.dataType, ...
                                 'outputType', 'one', ...
                                 'fileType', 'auto') / 255;
 
                         end
 
-                        cubeMap(y+1, x+1, z+1) = vis.bufferDelete;
+                        cubeMap(y+1, x+1, z+1) ...
+                            = vis.bufferDelete;
 
                     end
                 end
             end
-
-            for x = this.cubeRange{1}(1) : this.cubeRange{1}(2)
-                for y = this.cubeRange{2}(1) : this.cubeRange{2}(2)
-                    for z = this.cubeRange{3}(1) : this.cubeRange{3}(2)
-                        if cubeMap(y+1, x+1, z+1) == 0
+            
+            % Remove a data cube if the corresponding cubeMap matrix
+            % position reaches zero.
+            for x = 0 : size(this.image, 2)-1
+                for y = 0 : size(this.image, 1)-1
+                    for z = 0 : size(this.image, 3)-1
+                        if cubeMap(y+1, x+1, z+1) <= 0
                             this.image{y+1, x+1, z+1} = [];
                         end
                     end
@@ -247,11 +265,14 @@ classdef ImageData < handle
 
                         if ~isempty(this.image{y+1, x+1, z+1})
                             [planes.XY, planes.XZ, planes.ZY, ~] = jh_overlayObject( ...
-                                planes.XY, planes.XZ, planes.ZY, ...
-                                vis.roundedPosition, [x, y, z] .* this.cubeSize, ...
-                                this.image{y+1, x+1, z+1}, ...
-                                vis.displaySize, vis.anisotropyFactor, ...
-                                type, 0);
+                                planes.XY, planes.XZ, planes.ZY, ...    images
+                                vis.roundedPosition, ...                position
+                                [x, y, z] .* this.cubeSize, ...         object position
+                                this.image{y+1, x+1, z+1}, ...          object matrix
+                                vis.displaySize, ...                    display size
+                                vis.anisotropyFactor, ...               anisotropy factor
+                                type, ...                               overlay specifier
+                                0);
                         end
 
                     end
@@ -294,6 +315,29 @@ classdef ImageData < handle
         end
         
         
+    end
+    
+    methods (Access = public)
+        
+        function loadCubedImage(this)
+            
+            im = jh_openCubeRange( ...
+                this.sourceFolder, '', ...
+                'cubeSize', this.cubeSize, ...
+                'range', this.cubeRange{1}, this.cubeRange{2}, this.cubeRange{3}, ...
+                'dataType', this.dataType, ...
+                'outputType', 'cubed', ...
+                'fileType', 'auto');
+
+            this.image = cellfun(@(x) x/255, im, 'UniformOutput', false);
+
+            for i = 1:3
+                this.minLoadedCube(i) = 0;
+                this.maxLoadedCube(i) = this.cubeRange{i}(2)-this.cubeRange{i}(1);
+            end
+                    
+        end
+
     end
     
     methods (Access = private)
@@ -400,34 +444,17 @@ classdef ImageData < handle
                 this.loadCubedImage();
             elseif strcmp(this.bufferType, 'cubed')
                 % An empty cell matrix is set up and is filled on demand
-                this.image = cell(rangeX(2)+1, rangeY(2)+1, rangeZ(2)+1);
+                this.image = cell(rangeY(2)-rangeY(1)+1, rangeX(2)-rangeX(1)+1, rangeZ(2)-rangeZ(1)+1);
             else
                 % Does not happen!
             end
             
+            this.totalImageSize = size(this.image) .* this.cubeSize;
+            
             status = 1;
             
         end
-        
-        function loadCubedImage(this)
-            
-            im = jh_openCubeRange( ...
-                this.sourceFolder, '', ...
-                'cubeSize', this.cubeSize, ...
-                'range', this.cubeRange{1}, this.cubeRange{2}, this.cubeRange{3}, ...
-                'dataType', this.dataType, ...
-                'outputType', 'cubed', ...
-                'fileType', 'auto');
-
-            this.image = cellfun(@(x) x/255, im, 'UniformOutput', false);
-
-            for i = 1:3
-                this.minLoadedCube(i) = this.cubeRange{i}(1);
-                this.maxLoadedCube(i) = this.cubeRange{i}(2);
-            end
-                    
-        end
-        
+                
         
     end
     

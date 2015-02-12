@@ -634,9 +634,11 @@ classdef Viewer < handle
 
             this.image.bufferType = 'whole';
             this.checkBufferType();
-            this.image.loadCubedImage();
-            this.displayCurrentPosition('');
-            this.activateObjects();
+            if ~isempty(this.image.image);
+                this.image.loadCubedImage();
+                this.displayCurrentPosition('');
+                this.activateObjects();
+            end
 
         end
         function m_settings_bufferType_cubed_callback(this, ~, ~)
@@ -905,10 +907,10 @@ classdef Viewer < handle
             bounds = this.visualization.currentPosition;
             
             for i = 1:3
-                if bounds(i) > (this.image.cubeRange{i}(2) + 1) * this.image.cubeSize(i) - 1;
-                    bounds(i) = (this.image.cubeRange{i}(2) + 1) * this.image.cubeSize(i) - 1;
-                elseif bounds(i) < (this.image.cubeRange{i}(1)) * this.image.cubeSize(i)
-                    bounds(i) = (this.image.cubeRange{i}(1)) * this.image.cubeSize(i);
+                if bounds(i) > this.image.totalImageSize(i)-1
+                    bounds(i) = this.image.totalImageSize(i)-1;
+                elseif bounds(i) < 0
+                    bounds(i) = 0;
                 end
             end
             
