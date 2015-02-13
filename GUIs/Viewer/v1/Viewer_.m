@@ -21,4 +21,4 @@ clear t posSlash thisPath functionsPath;
 
 %% Start viewer
 
-h = Viewer('name', 'TestName');
+h = Viewer('name', 'MatKnossos');

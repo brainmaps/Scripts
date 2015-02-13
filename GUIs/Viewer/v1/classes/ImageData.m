@@ -1,6 +1,7 @@
 classdef ImageData < handle
     
     properties
+        name
         cubeRange       % [x, y, z]
         image
         anisotropic     % [x, y, z]
@@ -15,9 +16,7 @@ classdef ImageData < handle
     end
     
     properties (SetAccess = protected)
-        
-        % >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        % Check if this is really needed!
+
         minLoadedCube
         maxLoadedCube
         
@@ -33,6 +32,7 @@ classdef ImageData < handle
             % SYNOPSIS
             %   handle = ImageData()
             %   handle = ImageData(___, 'image', image)
+            %   handle = ImageData(___, 'name', 'name')
             %   handle = ImageData(___, 'cubeRange', cubeRange)
             %   handle = ImageData(___, 'cubeSize', cubeSize)
             %   handle = ImageData(___, 'bufferType', bufferType)
@@ -48,6 +48,7 @@ classdef ImageData < handle
             %       and are set to [] by default
             %   ---
             %   image: A cell array containing the image data
+            %   name: A name to identify the data set
             %   cubeRange: Defines the cubes which are loaded when using
             %       the loadDataDlg function
             %       {[x1, x2], [y1, y2], [z1, z2]}
@@ -66,6 +67,7 @@ classdef ImageData < handle
             
             % Set defaults
             dat.image = [];
+            dat.name = '';
             dat.cubeRange = [];
             dat.cubeSize = [];
             dat.bufferType = [];
@@ -84,6 +86,9 @@ classdef ImageData < handle
                     
                     if strcmp(varargin{i}, 'image')
                         dat.image = varargin{i+1};
+                        i = i+1;
+                    elseif strcmp(varargin{i}, 'name')
+                        dat.name = varargin{i+1};
                         i = i+1;
                     elseif strcmp(varargin{i}, 'cubeRange')
                         dat.cubeRange = varargin{i+1};
@@ -356,7 +361,7 @@ classdef ImageData < handle
         %% FileIO
         
         function getParametersFromDialog(this, getInfo)
-            
+  
             if isempty(this.cubeRange)
                 this.cubeRange = {[0 0], [0 0], [0 0]};
             end
@@ -364,21 +369,30 @@ classdef ImageData < handle
             % Build the parameter dialog
             parameterNames = [];
             parameters = [];
-            if getInfo(1) 
+            if getInfo(1)
                 
-                parameterNames = {'From (x, y, z)', 'To (x, y, z)'};
-                parameters = { ...
+                parameterNames = {'Name'};
+                parameters = {this.name};
+                
+            end
+                
+            if getInfo(2) 
+                
+                parameterNames = [parameterNames, ...
+                    {'From (x, y, z)', 'To (x, y, z)'}];
+                parameters = [parameters, ...
+                    { ...
                     [ num2str(this.cubeRange{1}(1)) ', ' ...
                       num2str(this.cubeRange{2}(1)) ', ' ...
                       num2str(this.cubeRange{3}(1)) ], ...
                     [ num2str(this.cubeRange{1}(2)) ', ' ...
                       num2str(this.cubeRange{2}(2)) ', ' ...
                       num2str(this.cubeRange{3}(2)) ] ...
-                    };
+                    }];
                 
             end
             
-            if getInfo(2)
+            if getInfo(3)
                 
                 parameterNames = [parameterNames, ...
                     {'Anisotropy factors (x, y, z)'}];
@@ -387,7 +401,7 @@ classdef ImageData < handle
                 
             end
             
-            if getInfo(3)
+            if getInfo(4)
                 
                 parameterNames = [parameterNames, ...
                     {'Position (x, y, z)'}];
@@ -402,6 +416,10 @@ classdef ImageData < handle
             % Interpret the returned data
             p = 1;
             if getInfo(1)
+                this.name = settings{p};
+                p = p+1;
+            end
+            if getInfo(2)
                 rangeFrom = strsplit(settings{p}, {', ', ','});
                 rangeTo = strsplit(settings{p+1}, {', ', ','});
                 rangeX = [str2double(rangeFrom{1}) str2double(rangeTo{1})];
@@ -410,12 +428,12 @@ classdef ImageData < handle
                 this.cubeRange = {rangeX, rangeY, rangeZ};
                 p = p+2;
             end
-            if getInfo(2)
+            if getInfo(3)
                 anisotrpc = strsplit(settings{p}, {', ', ','});
                 this.anisotropic = cellfun(@(x) str2double(x), anisotrpc);
                 p = p+1;
             end
-            if getInfo(3)
+            if getInfo(4)
                 pos = strsplit(settings{p}, {', ', ','});
                 this.position = cellfun(@(x) str2double(x), pos);
             end
@@ -435,7 +453,7 @@ classdef ImageData < handle
             %   getInfo: Cell array of strings describing which information 
             %       is to be retrieved by an input dialog window
             %       Possible strings:
-            %           'cubeRange', 'anisotropy', 'position'
+            %           'name', 'cubeRange', 'anisotropy', 'position'
             %       If getInfo == 'all', all of the above are assumed
             %           (default)
             %   type: Defines how the data is stored within the mat
@@ -473,19 +491,21 @@ classdef ImageData < handle
                     if strcmp(varargin{i}, 'getInfo')
                         
                         if iscell(varargin{i+1})
-                            t = [0, 0, 0];
+                            t = [0, 0, 0, 0];
                             for j = 1:length(varargin{i+1})
-                                if strcmp(varargin{i+1}, 'cubeRange')
+                                if strcmp(varargin{i+1}, 'name')
                                     t(1) = 1;
-                                elseif strcmp(varargin{i+1}, 'anisotropy')
+                                elseif strcmp(varargin{i+1}, 'cubeRange')
                                     t(2) = 1;
-                                elseif strcmp(varargin{i+1}, 'position')
+                                elseif strcmp(varargin{i+1}, 'anisotropy')
                                     t(3) = 1;
+                                elseif strcmp(varargin{i+1}, 'position')
+                                    t(4) = 1;
                                 end                                    
                             end
                             getInfo = t;
                         else
-                            getInfo = [1, 1, 1];
+                            getInfo = [1, 1, 1, 1];
                         end
                         i = i+1;
                         
@@ -556,8 +576,21 @@ classdef ImageData < handle
             status = 1;
                     
         end
-        function status = loadFromCubedDataDlg(this)
+        function status = loadFromCubedDataDlg(this, varargin)
+            % loadFromCubedDataDlg loads image data form cubed data files
             % -------------------------------------------------------------
+            % SYNOPSIS
+            %   status = loadFromCubedDataDlg()
+            %   status = loadFromCubedDataDlg(___, 'getInfo', getInfo)
+            %
+            % INPUT
+            %   getInfo: Cell array of strings describing which information 
+            %       is to be retrieved by an input dialog window
+            %       Possible strings:
+            %           'name', 'cubeRange', 'anisotropy', 'position'
+            %       If getInfo == 'all', all of the above are assumed
+            %           (default)
+            %
             % OUTPUT
             %
             %   status: 
@@ -566,6 +599,54 @@ classdef ImageData < handle
             %        1 = data successfully loaded
             % -------------------------------------------------------------
             
+            %% Check input
+            
+            % Defaults
+            getInfo = 'all';
+            type = 'auto';
+            this.varName = 'auto';
+            
+            % Check input
+            if ~isempty(varargin)
+                i = 0;
+                
+                while i < length(varargin)
+                    i = i+1;
+                    
+                    if strcmp(varargin{i}, 'getInfo')
+                        
+                        if iscell(varargin{i+1})
+                            t = [0, 0, 0, 0];
+                            for j = 1:length(varargin{i+1})
+                                if strcmp(varargin{i+1}, 'name')
+                                    t(1) = 1;
+                                elseif strcmp(varargin{i+1}, 'cubeRange')
+                                    t(2) = 1;
+                                elseif strcmp(varargin{i+1}, 'anisotropy')
+                                    t(3) = 1;
+                                elseif strcmp(varargin{i+1}, 'position')
+                                    t(4) = 1;
+                                end                                    
+                            end
+                            getInfo = t;
+                        elseif strcmp(varargin{i+1}, 'all');
+                            getInfo = [1, 1, 1, 1];
+                        end
+                        i = i+1;
+                    end
+                    
+                end
+                
+            end
+            
+            if ~iscell(getInfo)
+                if strcmp(getInfo, 'all')
+                    getInfo = [1, 1, 1, 1];
+                end
+            end
+            
+            %%
+
             % Get the directory
             folder = uigetdir(this.sourceFolder, 'Select dataset folder');
             if folder == 0
@@ -575,40 +656,18 @@ classdef ImageData < handle
                 this.sourceFolder = folder;
             end
 
-            % Dialog box to specify the range which will be loaded
-            range = inputdlg( ...
-                {   'From (x, y, z)', 'To (x, y, z)', ...
-                    'Anisotropy factors (x, y, z)' ...
-                    'Position (x, y, z)'
-                }, ...
-                'Data settings...', ...
-                1, ...
-                {   [num2str(this.cubeRange{1}(1)) ', ' num2str(this.cubeRange{2}(1)) ', ' num2str(this.cubeRange{3}(1))], ...
-                    [num2str(this.cubeRange{1}(2)) ', ' num2str(this.cubeRange{2}(2)) ', ' num2str(this.cubeRange{3}(2))], ...
-                    [num2str(this.anisotropic(1)), ', ' num2str(this.anisotropic(2)), ', ', num2str(this.anisotropic(3))], ...
-                    [num2str(this.position(1)) ', ' num2str(this.position(2)) ', ' num2str(this.position(3))] ...
-                });
-            
-            % Interpret the returned data
-            rangeFrom = strsplit(range{1}, {', ', ','});
-            rangeTo = strsplit(range{2}, {', ', ','});
-            rangeX = [str2double(rangeFrom{1}) str2double(rangeTo{1})];
-            rangeY = [str2double(rangeFrom{2}) str2double(rangeTo{2})];
-            rangeZ = [str2double(rangeFrom{3}) str2double(rangeTo{3})];
-            anisotrpc = strsplit(range{3}, {', ', ','});
-            pos = strsplit(range{4}, {', ', ','});
-
-            this.anisotropic = cellfun(@(x) str2double(x), anisotrpc);
-            this.cubeRange = {rangeX, rangeY, rangeZ};
-            this.position = cellfun(@(x) str2double(x), pos);
-            
+            if max(getInfo) == 1
+                this.getParametersFromDialog(getInfo);
+            end
             
             if strcmp(this.bufferType, 'whole')
                 % The whole specified image will be loaded instantly
                 this.loadCubedImage();
             elseif strcmp(this.bufferType, 'cubed')
                 % An empty cell matrix is set up and is filled on demand
-                this.image = cell(rangeY(2)-rangeY(1)+1, rangeX(2)-rangeX(1)+1, rangeZ(2)-rangeZ(1)+1);
+                this.image = cell(this.cubeRange{2}(2)-this.cubeRange{2}(1)+1, ...
+                    this.cubeRange{1}(2)-this.cubeRange{1}(1)+1, ...
+                    this.cubeRange{3}(2)-this.cubeRange{3}(1)+1);
             else
                 % Does not happen!
             end

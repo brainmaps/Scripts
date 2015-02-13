@@ -4,6 +4,7 @@ classdef Visualization
         data
         currentPosition     % [x y z]
         displaySize         % [x y z]
+        currentImage        % integer
         bSectionalPlanes
         bOverlayObjects
         spacerSize
@@ -22,15 +23,16 @@ classdef Visualization
         
         %% Initialization
         
-        function vis = Visualization(varargin)
-            vis.currentPosition = varargin{1};
-            vis.displaySize = varargin{2};
-            vis.bSectionalPlanes = varargin{3};
-            vis.bOverlayObjects = varargin{4};
-            vis.spacerSize = varargin{5};
-            vis.anisotropicInterpolationType = varargin{6};
-            vis.anisotropyFactor = varargin{7};
-            vis.bufferDelete = varargin{8};
+        function vis = Visualization(curPos, dispSize, bSecPl, bOverlObj, spSize, anInterpT, anFactor, buffDel, curIm)
+            vis.currentPosition = curPos;
+            vis.displaySize = dispSize;
+            vis.bSectionalPlanes = bSecPl;
+            vis.bOverlayObjects = bOverlObj;
+            vis.spacerSize = spSize;
+            vis.anisotropicInterpolationType = anInterpT;
+            vis.anisotropyFactor = anFactor;
+            vis.bufferDelete = buffDel;
+            vis.currentImage = curIm;
         end
         
         %% Get-sets

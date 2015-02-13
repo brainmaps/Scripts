@@ -63,6 +63,7 @@ classdef Viewer < handle
         m_settings_sectionalPlanes
         m_settings_overlayObjects
         m_settings_advanced
+        m_settings_switchImage
         m_tools
         m_overlays
         m_overlays_loadedOverlays
@@ -84,7 +85,7 @@ classdef Viewer < handle
     properties (SetAccess = protected)
         visualization
         mainSettings = MainSettings('single', 'DefaultUicontrolBackgroundColor');
-        image
+        image   % Is a cell of ImageData objects
         overlay
         fileIO
     end
@@ -273,6 +274,11 @@ classdef Viewer < handle
                     'Callback', @MainWindow.m_settings_overlayObjects_callback, ...
                     'Accelerator', 'w');
                 % -
+                MainWindow.m_settings_switchImage = uimenu(MainWindow.m_settings, ...
+                    'Label', 'Switch image', ...
+                    'Separator', 'on', ...
+                    'Callback', @MainWindow.m_settings_switchImage_callback, ...
+                    'Accelerator', 'a');
                 MainWindow.m_settings_advanced = uimenu(MainWindow.m_settings, ...
                     'Label', 'Advanced', ...
                     'Separator', 'on', ...
@@ -358,7 +364,7 @@ classdef Viewer < handle
         %% MainWindow callbacks
         function this_closeRequestFcn(this, ~, ~)
             delete(this.Figure);
-            delete(this.image);
+            delete(this.image(:));
 %             delete(this.visualization);
             delete(this);
         end
@@ -388,16 +394,25 @@ classdef Viewer < handle
             % Initialize some stuff
 %             this.image = ImageData({[3 6], [3 6], [0 3]}, [], [1 1 3], ...
 %                 [128 128 128], 'cubed', 'single', [], [], [0 0 0]);
-            this.image = ImageData( ...
-                'cubeRange', {[3 6], [3 6], [0 3]}, ...
-                'dataType', 'single', ...
-                'bufferType', 'cubed', ...
-                'cubeSize', [128 128 128], ...
-                'anisotropic', [1 1 3], ...
-                'position', [0 0 0]);
+%             this.image = {ImageData( ...
+%                 'cubeRange', {[3 6], [3 6], [0 3]}, ...
+%                 'dataType', 'single', ...
+%                 'bufferType', 'cubed', ...
+%                 'cubeSize', [128 128 128], ...
+%                 'anisotropic', [1 1 3], ...
+%                 'position', [0 0 0])};
                 
-            this.visualization = Visualization([0, 0, 0], 256, true, ...
-                true, 5, 'bicubic', [1 1 3], 100);
+            this.visualization = Visualization( ...
+                [0, 0, 0], ...  currentPosition
+                256, ...        displaySize
+                true, ...       bSectionalPlanes
+                true, ...       bOverlayObj
+                5, ...          spacerSize
+                'bicubic', ...  anisotropicInterpolationType
+                [1 1 3], ...    anisotropyFactor
+                100, ...        bufferDelete
+                1 ...           currentImage
+                );
             
         end
         function this_afterCreationFcn(this)
@@ -631,7 +646,10 @@ classdef Viewer < handle
             
         end
         function m_settings_bufferType_wholeImage_callback(this, ~, ~)
-
+            
+            % >>>>>>>>>>>>>>>>>>>>>>>>>>
+            return;
+            
             this.image.bufferType = 'whole';
             this.checkBufferType();
             if ~isempty(this.image.image);
@@ -661,14 +679,27 @@ classdef Viewer < handle
             this.displayCurrentPosition('');
 
         end
+        function m_settings_switchImage_callback(this, ~, ~)
+            
+            t = this.visualization.currentImage;
+            t = t+1;
+            if t > length(this.image)
+                t = 1;
+            end
+            this.visualization.currentImage = t;
+            this.visualization.anisotropyFactor = this.image{t}.anisotropic;
+            
+            this.displayCurrentPosition('set');
+            
+        end
 
         function m_overlays_loadOverlay_mFile_callback(this, ~, ~)
 
             % Add entry to the overlays
             this.overlay{length(this.overlay) + 1} ...
                 = ImageData( ...
-                    'anisotropic', this.image.anisotropic, ...
-                    'bufferType', this.image.bufferType, ...
+                    'anisotropic', this.image{1}.anisotropic, ...
+                    'bufferType', this.image{1}.bufferType, ...
                     'sourceFolder', this.fileIO.defaultFolder, ...
                     'sourceType', 'matFile', ...
                     'position', [0, 0, 0], ...
@@ -728,7 +759,9 @@ classdef Viewer < handle
         end
 
         function displayCurrentPosition(this, type)
-       
+            
+            im = this.visualization.currentImage;
+            
             % Abort if nothing has changed
             if strcmp(type, 'checkForChange');
                 if ~this.checkForChange('getset')
@@ -740,8 +773,8 @@ classdef Viewer < handle
 
             % Start with the background image
             % Load the desired part of the image (if not already open)
-            if strcmp(this.image.bufferType, 'cubed')
-                this.image.loadVisibleSubImage(this.visualization);
+            if strcmp(this.image{im}.bufferType, 'cubed')
+                this.image{im}.loadVisibleSubImage(this.visualization);
             else
                 
             end
@@ -756,7 +789,7 @@ classdef Viewer < handle
                 );
 
             % Draw the background image
-            [planes] = this.image.createDisplayPlanes ...
+            [planes] = this.image{im}.createDisplayPlanes ...
                 (planes, this.visualization, 'replace');
 
             if ~isempty(this.overlay)
@@ -822,12 +855,12 @@ classdef Viewer < handle
         
         function activateObjects(this)
         
-            if isempty(this.image.image)
-                % No loaded image
-
-
-            end
-
+%             if isempty(this.image.image)
+%                 % No loaded image
+% 
+% 
+%             end
+% 
     %         if isempty(data.evaluation.currentLabelID)
     %             % Evaluation inactive
     %             % -------------------
@@ -923,8 +956,8 @@ classdef Viewer < handle
             bounds = this.visualization.currentPosition;
             
             for i = 1:3
-                if bounds(i) > this.image.totalImageSize(i)-1
-                    bounds(i) = this.image.totalImageSize(i)-1;
+                if bounds(i) > this.image{1}.totalImageSize(i)-1
+                    bounds(i) = this.image{1}.totalImageSize(i)-1;
                 elseif bounds(i) < 0
                     bounds(i) = 0;
                 end
@@ -1000,7 +1033,10 @@ classdef Viewer < handle
         function checkBufferType(this)
             set(this.m_settings_bufferType_wholeImage, 'Checked', 'off');
             set(this.m_settings_bufferType_cubed, 'Checked', 'off');
-
+            
+            % >>>>>>>>>>>>>>>>>>>>>>>>>>
+            return;
+            
             switch this.image.bufferType
                 case 'whole'
                     set(this.m_settings_bufferType_wholeImage, 'Checked', 'on');
@@ -1010,21 +1046,37 @@ classdef Viewer < handle
         end
         
         function loadImageFromCubedData(this)
-           
-            if isempty(this.image.sourceFolder)
-                this.image.sourceFolder = this.fileIO.defaultFolder;
+            
+            % Initialize an image
+            this.image = [this.image, ...
+                {ImageData( ...
+                'cubeRange', {[3 6], [3 6], [0 3]}, ...
+                'dataType', 'single', ...
+                'bufferType', 'cubed', ...
+                'cubeSize', [128 128 128], ...
+                'anisotropic', [1 1 3], ...
+                'position', [0 0 0], ...
+                'name', 'ImageData')}];
+
+            
+            if isempty(this.image{end}.sourceFolder)
+                this.image{end}.sourceFolder = this.fileIO.defaultFolder;
             end
-            this.image.sourceType = 'cubed';
+            this.image{end}.sourceType = 'cubed';
             
             % Selects data using a dialog window; returns 1 for success
-            success = this.image.loadDataDlg();
+            success = this.image{end}.loadDataDlg();
             if success ~= 1
-                this.image.sourceType = [];
+                % Delete last entry if no image was loaded
+                this.image = this.image(1:end-1);
                 return;
             end
             
+            % Set the new image for display
+            this.visualization.currentImage = length(this.image);
+            
             % Anisotropy also has to be set for display
-            this.visualization.anisotropyFactor = this.image.anisotropic;
+            this.visualization.anisotropyFactor = this.image{end}.anisotropic;
 
             this.createImageDisplay();
             this.displayCurrentPosition('');
