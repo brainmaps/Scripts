@@ -9,8 +9,9 @@ classdef ImageData < handle
         bufferType      % 'cubed', 'whole'
         dataType        % 'single', 'double', 'integer', ...
         sourceFolder
-        sourceType      % 'cubed', 'stack', 'm-file'
+        sourceType      % 'cubed', 'stack', 'matFile'
         position        % [x, y, z]
+        varName         % Name of the variable within a .mat file
     end
     
     properties (SetAccess = protected)
@@ -172,7 +173,7 @@ classdef ImageData < handle
                 case 'stack'
                     
                 case 'matFile'
-                    status = this.loadFromMatFileDlg();
+                    status = this.loadFromMatFileDlg('getInfo', 'all');
             end
             
         end
@@ -337,14 +338,116 @@ classdef ImageData < handle
             end
                     
         end
+        
+        function loadMatFileImage(this)
+            
+            imData = load(this.sourceFolder, this.varName);
+            if strcmp(this.bufferType, 'whole')
+                this.image = {imData.(this.varName)};
+            elseif strcmp(this.bufferType, 'cubed')
+                this.image = imData.(this.varName);
+            end
+            
+        end
 
     end
     
     methods (Access = private)
         %% FileIO
         
-        function status = loadFromMatFileDlg(this)
+        function getParametersFromDialog(this, getInfo)
+            
+            if isempty(this.cubeRange)
+                this.cubeRange = {[0 0], [0 0], [0 0]};
+            end
+            
+            % Build the parameter dialog
+            parameterNames = [];
+            parameters = [];
+            if getInfo(1) 
+                
+                parameterNames = {'From (x, y, z)', 'To (x, y, z)'};
+                parameters = { ...
+                    [ num2str(this.cubeRange{1}(1)) ', ' ...
+                      num2str(this.cubeRange{2}(1)) ', ' ...
+                      num2str(this.cubeRange{3}(1)) ], ...
+                    [ num2str(this.cubeRange{1}(2)) ', ' ...
+                      num2str(this.cubeRange{2}(2)) ', ' ...
+                      num2str(this.cubeRange{3}(2)) ] ...
+                    };
+                
+            end
+            
+            if getInfo(2)
+                
+                parameterNames = [parameterNames, ...
+                    {'Anisotropy factors (x, y, z)'}];
+                parameters = [parameters, ...
+                    {[num2str(this.anisotropic(1)), ', ' num2str(this.anisotropic(2)), ', ', num2str(this.anisotropic(3))]}];
+                
+            end
+            
+            if getInfo(3)
+                
+                parameterNames = [parameterNames, ...
+                    {'Position (x, y, z)'}];
+                parameters = [parameters, ...
+                    {[num2str(this.position(1)) ', ' num2str(this.position(2)) ', ' num2str(this.position(3))]}];
+                
+            end
+            
+            % Call dialog box
+            settings = inputdlg(parameterNames, 'Data settings...', 1, parameters);
+            
+            % Interpret the returned data
+            p = 1;
+            if getInfo(1)
+                rangeFrom = strsplit(settings{p}, {', ', ','});
+                rangeTo = strsplit(settings{p+1}, {', ', ','});
+                rangeX = [str2double(rangeFrom{1}) str2double(rangeTo{1})];
+                rangeY = [str2double(rangeFrom{2}) str2double(rangeTo{2})];
+                rangeZ = [str2double(rangeFrom{3}) str2double(rangeTo{3})];
+                this.cubeRange = {rangeX, rangeY, rangeZ};
+                p = p+2;
+            end
+            if getInfo(2)
+                anisotrpc = strsplit(settings{p}, {', ', ','});
+                this.anisotropic = cellfun(@(x) str2double(x), anisotrpc);
+                p = p+1;
+            end
+            if getInfo(3)
+                pos = strsplit(settings{p}, {', ', ','});
+                this.position = cellfun(@(x) str2double(x), pos);
+            end
+
+        end
+        
+        function status = loadFromMatFileDlg(this, varargin)
+            % loadFromMatFileDlg loads image data form a .mat file
             % -------------------------------------------------------------
+            % SYNOPSIS
+            %   status = loadFromMatFileDlg()
+            %   status = loadFromMatFileDlg(___, 'getInfo', getInfo)
+            %   status = loadFromMatFileDlg(___, 'type', type)
+            %   status = loadFromMatFileDlg(___, 'varName', varName)
+            %
+            % INPUT
+            %   getInfo: Cell array of strings describing which information 
+            %       is to be retrieved by an input dialog window
+            %       Possible strings:
+            %           'cubeRange', 'anisotropy', 'position'
+            %       If getInfo == 'all', all of the above are assumed
+            %           (default)
+            %   type: Defines how the data is stored within the mat
+            %       file
+            %       'cell': As cell array containing cubed data.
+            %       'one': As one matrix contating the whole data set
+            %       'auto' (default): Looks for index variable which
+            %           contains one of the above strings
+            %   varName: Name of the variable within the matFile
+            %       'auto' (default): Looks for index variable which
+            %           specifies the name
+            %
             % OUTPUT
             %
             %   status: 
@@ -352,6 +455,53 @@ classdef ImageData < handle
             %        0 = no file was selected
             %        1 = data successfully loaded
             % -------------------------------------------------------------
+            
+            %% Check input
+            
+            % Defaults
+            getInfo = 'all';
+            type = 'auto';
+            this.varName = 'auto';
+            
+            % Check input
+            if ~isempty(varargin)
+                i = 0;
+                
+                while i < length(varargin)
+                    i = i+1;
+                    
+                    if strcmp(varargin{i}, 'getInfo')
+                        
+                        if iscell(varargin{i+1})
+                            t = [0, 0, 0];
+                            for j = 1:length(varargin{i+1})
+                                if strcmp(varargin{i+1}, 'cubeRange')
+                                    t(1) = 1;
+                                elseif strcmp(varargin{i+1}, 'anisotropy')
+                                    t(2) = 1;
+                                elseif strcmp(varargin{i+1}, 'position')
+                                    t(3) = 1;
+                                end                                    
+                            end
+                            getInfo = t;
+                        else
+                            getInfo = [1, 1, 1];
+                        end
+                        i = i+1;
+                        
+                    elseif strcmp(varargin{i}, 'type')
+                        type = varargin{i+1};
+                        i = i+1;
+                    elseif strcmp(varargin{i}, 'varName')
+                        this.varName = varargin{i+1};
+                        i = i+1;
+                    end
+                    
+                end
+                
+            end
+            
+            %%
             
             % Get the file
             [file, path] = uigetfile('*.mat', 'Select dataset file');
@@ -361,34 +511,48 @@ classdef ImageData < handle
                 this.sourceFolder = [path, file];
             end
             
-            % First, load the file and get its index variable
-            index = load([path file], 'index');
+            % First, load the file and get its index variable which
+            % contains information about the data type
+            %   'cell': organized as cubes within a cell array
+            %       (cubed cell array)
+            %   'one': whole data is stored as a matrix
+            if strcmp(type, 'auto') || strcmp(this.varName, 'auto')
+                load([path file], 'index');
+                type = index{1};
+                this.varName = index{2};
+            end
             
-            return;
+            if strcmp(type, 'one')
+                
+                % No range information will be retrieved
+                getInfo(1) = 0;
+                
+                % Get user input if needed
+                if max(getInfo) == 1
+                    this.getParametersFromDialog(getInfo);
+                end
+                
+                this.cubeRange = [];
+                this.bufferType = 'whole';
+                
+                this.loadMatFileImage();
+                
+                this.cubeSize = size(this.image{1});
+                this.totalImageSize = this.cubeSize;
+                
+            elseif strcmp(type, 'cell')
+                
+                this.bufferType = 'cubed';
+                
+                this.loadMatFileImage();
+                
+                this.cubeSize = size(this.image{1});
+                this.totalImageSize = this.cubeSize .* size(this.image);
+                
+            end
             
+            this.dataType = class(this.image{1});
 
-            % Dialog box to specify the anisotropy
-            settings = inputdlg( ...
-                {   'Anisotropy factors (x, y, z)', ...
-                    'Position (x, y, z)' ...
-                }, ...
-                'Data settings...', 1, ...
-                {   [num2str(this.anisotropic(1)), ', ' num2str(this.anisotropic(2)), ', ', num2str(this.anisotropic(3))], ...
-                    [num2str(this.position(1)) ', ' num2str(this.position(2)) ', ' num2str(this.position(3))] ...
-                });
-
-            anisotrpc = strsplit(settings{1}, {', ', ','});
-            this.anisotropic = cellfun(@(x) str2double(x), anisotrpc);
-
-            pos = strsplit(settings{2}, {', ', ','});
-            this.position = cellfun(@(x) str2double(x), pos);
-
-            this.loadMFileImage();
-
-            this.cubeRange = [];
-            this.cubeSize = [];
-            this.bufferType = 'whole';
-            
             status = 1;
                     
         end
