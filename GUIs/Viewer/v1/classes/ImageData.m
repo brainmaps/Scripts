@@ -19,6 +19,13 @@ classdef ImageData < handle
 
         minLoadedCube
         maxLoadedCube
+            
+        % cubeMap is a matrix of the size of the image cell array. It
+        % stores values for each image cubes describing for how long
+        % these were not seen on the display, i.e., if visible the
+        % value is set to an initial number and each time this function
+        % is called all values are decreased by one. 
+        cubeMap
         
     end
         
@@ -76,6 +83,7 @@ classdef ImageData < handle
             dat.sourceFolder = [];
             dat.anisotropic = [];
             dat.position = [];
+            dat.cubeMap = [];
             
             % Check input
             if ~isempty(varargin)
@@ -187,18 +195,18 @@ classdef ImageData < handle
         %% Create display planes
         
         function loadVisibleSubImage(this, vis)
-            persistent cubeMap
+%             persistent cubeMap
             
             % cubeMap is a matrix of the size of the image cell array. It
             % stores values for each image cubes describing for how long
             % these were not seen on the display, i.e., if visible the
             % value is set to an initial number and each time this function
             % is called all values are decreased by one. 
-            if isempty(cubeMap) || isequal(size(cubeMap), size(this.image))
-                cubeMap = zeros(size(this.image));
+            if isempty(this.cubeMap) || isequal(size(this.cubeMap), size(this.image))
+                this.cubeMap = zeros(size(this.image));
             end
-            cubeMap = cubeMap - 1;
-            cubeMap(cubeMap < 0) = 0;
+            this.cubeMap = this.cubeMap - 1;
+            this.cubeMap(this.cubeMap < 0) = 0;
 
             % Determine the range of the image which is visible
             minVisible = vis.currentPosition - vis.displaySize / 2;
@@ -237,7 +245,7 @@ classdef ImageData < handle
 
                         end
 
-                        cubeMap(y+1, x+1, z+1) ...
+                        this.cubeMap(y+1, x+1, z+1) ...
                             = vis.bufferDelete;
 
                     end
@@ -249,7 +257,7 @@ classdef ImageData < handle
             for x = 0 : size(this.image, 2)-1
                 for y = 0 : size(this.image, 1)-1
                     for z = 0 : size(this.image, 3)-1
-                        if cubeMap(y+1, x+1, z+1) <= 0
+                        if this.cubeMap(y+1, x+1, z+1) <= 0
                             this.image{y+1, x+1, z+1} = [];
                         end
                     end
@@ -352,6 +360,24 @@ classdef ImageData < handle
             elseif strcmp(this.bufferType, 'cubed')
                 this.image = imData.(this.varName);
             end
+            
+        end
+        
+        function clearBuffer(this)
+            
+            % >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+            % Clear the buffer also for whole images: Needs reloading of 
+            % the image to be implemented
+            
+            
+            if strcmp(this.bufferType, 'cubed')
+                this.image = cellfun(@(x) [], this.image, 'uniformoutput', false);
+                this.cubeMap(:) = 0;
+            end
+            
+        end
+        
+        function fillBuffer(this)
             
         end
 

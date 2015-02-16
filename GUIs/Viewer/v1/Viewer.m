@@ -64,6 +64,8 @@ classdef Viewer < handle
         m_settings_overlayObjects
         m_settings_advanced
         m_settings_switchImage
+        m_settings_images
+        m_settings_images_image
         m_tools
         m_overlays
         m_overlays_loadedOverlays
@@ -279,6 +281,10 @@ classdef Viewer < handle
                     'Separator', 'on', ...
                     'Callback', @MainWindow.m_settings_switchImage_callback, ...
                     'Accelerator', 'a');
+                MainWindow.m_settings_images = uimenu(MainWindow.m_settings, ...
+                    'Label', 'Images', ...
+                    'Enable', 'off');
+                % -
                 MainWindow.m_settings_advanced = uimenu(MainWindow.m_settings, ...
                     'Label', 'Advanced', ...
                     'Separator', 'on', ...
@@ -549,11 +555,10 @@ classdef Viewer < handle
 
         end
 
-        
         %% Menu callbacks
         function m_file_loadImage_fromCubedData_callback(this, ~, ~)
-
-            this.loadImageFromCubedData();
+            
+            this.loadNewImage('cubed');
             
         end
 %         function m_file_saveProject_callback(hObject, ~)
@@ -647,24 +652,25 @@ classdef Viewer < handle
         end
         function m_settings_bufferType_wholeImage_callback(this, ~, ~)
             
-            % >>>>>>>>>>>>>>>>>>>>>>>>>>
-            return;
+            cID = this.visualization.currentImage;
             
-            this.image.bufferType = 'whole';
+            this.image{cID}.bufferType = 'whole';
             this.checkBufferType();
-            if ~isempty(this.image.image);
-                this.image.loadCubedImage();
+            if ~isempty(this.image{cID}.image);
+                this.image{cID}.loadCubedImage();
                 this.displayCurrentPosition('');
-                this.activateObjects();
+%                 this.activateObjects();
             end
 
         end
         function m_settings_bufferType_cubed_callback(this, ~, ~)
-
-            this.image.bufferType = 'cubed';
+            
+            cID = this.visualization.currentImage;
+            
+            this.image{cID}.bufferType = 'cubed';
             this.checkBufferType();
             this.displayCurrentPosition('');
-            this.activateObjects();
+%             this.activateObjects();
 
         end
         function m_settings_sectionalPlanes_callback(this, ~, ~)
@@ -681,18 +687,25 @@ classdef Viewer < handle
         end
         function m_settings_switchImage_callback(this, ~, ~)
             
-            t = this.visualization.currentImage;
-            t = t+1;
-            if t > length(this.image)
-                t = 1;
+            oldID = this.visualization.currentImage;
+            newID = oldID+1;
+            if newID > length(this.image)
+                newID = 1;
             end
-            this.visualization.currentImage = t;
-            this.visualization.anisotropyFactor = this.image{t}.anisotropic;
             
-            this.displayCurrentPosition('set');
+            this.switchImage(newID);
             
         end
-
+        function m_settings_images_image_callback(this, src, ~)
+            
+            % Get image id
+            ID = find(this.m_settings_images_image == src);
+            
+            % Set new image
+            this.switchImage(ID);
+            
+        end
+        
         function m_overlays_loadOverlay_mFile_callback(this, ~, ~)
 
             % Add entry to the overlays
@@ -954,10 +967,11 @@ classdef Viewer < handle
         function checkForOutOfBounds(this)
             
             bounds = this.visualization.currentPosition;
+            cID = this.visualization.currentImage;
             
             for i = 1:3
-                if bounds(i) > this.image{1}.totalImageSize(i)-1
-                    bounds(i) = this.image{1}.totalImageSize(i)-1;
+                if bounds(i) > this.image{cID}.totalImageSize(i)-1
+                    bounds(i) = this.image{cID}.totalImageSize(i)-1;
                 elseif bounds(i) < 0
                     bounds(i) = 0;
                 end
@@ -970,7 +984,10 @@ classdef Viewer < handle
         function checkAllMenuItems(this)
             this.checkCurrentDisplaySizeInMenu();
             this.checkAnisotropicInterpolationType();
-            this.checkBufferType();
+            
+            % This is now performed on demand for each loaded image
+            % individually:
+%             this.checkBufferType(); 
 
             if this.visualization.bSectionalPlanes
                 set(this.m_settings_sectionalPlanes, 'Checked', 'on');
@@ -1034,10 +1051,9 @@ classdef Viewer < handle
             set(this.m_settings_bufferType_wholeImage, 'Checked', 'off');
             set(this.m_settings_bufferType_cubed, 'Checked', 'off');
             
-            % >>>>>>>>>>>>>>>>>>>>>>>>>>
-            return;
+            cID = this.visualization.currentImage;
             
-            switch this.image.bufferType
+            switch this.image{cID}.bufferType
                 case 'whole'
                     set(this.m_settings_bufferType_wholeImage, 'Checked', 'on');
                 case 'cubed'
@@ -1045,7 +1061,27 @@ classdef Viewer < handle
             end
         end
         
-        function loadImageFromCubedData(this)
+       	function loadNewImage(this, type)
+            
+            if strcmp(type, 'cubed')
+                % Load the image
+                success = this.loadImageFromCubedData();
+                if success ~= 1 
+                    return;
+                end
+            end
+            
+            % Add image to menu
+            this.m_settings_images_image(length(this.image)) = uimenu(this.m_settings_images, ...
+            'Label', this.image{length(this.image)}.name, ...
+            'Callback', @this.m_settings_images_image_callback);
+            set(this.m_settings_images, 'Enable', 'on');
+            
+            % Check menu item of the bufferType
+            this.checkBufferType;
+          
+        end
+        function success = loadImageFromCubedData(this)
             
             % Initialize an image
             this.image = [this.image, ...
@@ -1083,6 +1119,24 @@ classdef Viewer < handle
             this.activateObjects();
             
         end
+        
+        function switchImage(this, newID)
+            
+            % Get currentID
+            cID = this.visualization.currentImage;
+            
+            % Clear image buffer of the old image
+            this.image{cID}.clearBuffer();
+            
+            % Switch to the new image
+            this.visualization.currentImage = newID;
+            this.visualization.anisotropyFactor = this.image{newID}.anisotropic;
+            
+            this.displayCurrentPosition('set');
+            this.checkBufferType();
+            
+        end
+
 
     end
     

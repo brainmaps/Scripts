@@ -238,9 +238,18 @@ elseif strcmp(outputType, 'cubed')
                 % Create path name of the desired cube
                 p = [path 'x' xs filesep 'y' ys filesep 'z' zs filesep thisName];
                 
-                data{y+1-rangeY(1), x+1-rangeX(1), z+1-rangeZ(1)} ...
-                    = openCube(p, cubeSize, dataType);
+                if strcmp(thisName(end-3:end), '.raw') || strcmp(thisName(end-3:end), '.RAW')
+                    data{y+1-rangeY(1), x+1-rangeX(1), z+1-rangeZ(1)} ...
+                        = openCube(p, cubeSize, dataType);
+                elseif strcmp(thisName(end-3:end), '.tif') || ...
+                        strcmp(thisName(end-3:end), 'tiff') || ...
+                        strcmp(thisName(end-3:end), '.TIF') ||...
+                        strcmp(thisName(end-3:end), 'TIFF')
+                    data{y+1-rangeY(1), x+1-rangeX(1), z+1-rangeZ(1)} ...
+                        = openTiffCube(p, cubeSize, dataType);
 
+                end
+                
             end
 
         end
@@ -267,7 +276,7 @@ function cube = openTiffCube(path, cubeSize, dataType)
 cube = zeros(cubeSize, dataType);
 for i = 1:cubeSize(3)
     if strcmp(dataType, 'single') || strcmp(dataType, 'double')
-        cube(:,:,i) = cast(imread(path, i), dataType) / 255;
+        cube(:,:,i) = cast(imread(path, i), dataType);
     else
         cube(:,:,i) = imread(path, i);
     end

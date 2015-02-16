@@ -43,7 +43,7 @@ classdef Visualization
         
         %% Operations
         
-        
+
     end
     
 end
