@@ -1,6 +1,6 @@
 classdef ImageData < handle
     
-    properties
+    properties (SetObservable)
         name
         cubeRange       % [x, y, z]
         image
@@ -13,13 +13,14 @@ classdef ImageData < handle
         sourceType      % 'cubed', 'stack', 'matFile'
         position        % [x, y, z]
         varName         % Name of the variable within a .mat file
+        overlaySpec     % overlaySpecifier
     end
     
-    properties (SetAccess = protected)
+    properties (SetAccess = public, GetAccess = public)
 
         minLoadedCube
         maxLoadedCube
-            
+        
         % cubeMap is a matrix of the size of the image cell array. It
         % stores values for each image cubes describing for how long
         % these were not seen on the display, i.e., if visible the
@@ -29,6 +30,12 @@ classdef ImageData < handle
         
     end
         
+    events
+        
+        ImageChanged
+        
+    end
+    
     methods
         
         %% Constructor
@@ -48,6 +55,7 @@ classdef ImageData < handle
             %   handle = ImageData(___, 'sourceFolder', sourceFolder)
             %   handle = ImageData(___, 'anisotropic', anisotropic)
             %   handle = ImageData(___, 'position', position)
+            %   handle = ImageData(___, 'overlaySpec', overlaySpec)
             %
             % INPUT
             %   ---
@@ -71,6 +79,8 @@ classdef ImageData < handle
             %   position: The position relative to the display grid of the
             %       Viewer (needed, e.g., for correct placements of
             %       overlays)
+            %   overlaySpec: Object of class OverlaySpecifier to describe
+            %       overlay behaviour (not needed for background images)
             
             % Set defaults
             dat.image = [];
@@ -84,6 +94,7 @@ classdef ImageData < handle
             dat.anisotropic = [];
             dat.position = [];
             dat.cubeMap = [];
+            dat.overlaySpec = [];
             
             % Check input
             if ~isempty(varargin)
@@ -122,11 +133,16 @@ classdef ImageData < handle
                     elseif strcmp(varargin{i}, 'position')
                         dat.position = varargin{i+1};
                         i = i+1;
+                    elseif strcmp(varargin{i}, 'overlaySpec')
+                        dat.overlaySpec = varargin{i+1};
+                        i = i+1;
                     end
                     
                 end
                 
             end
+            
+            addlistener(dat, 'image', 'PostSet', @dat.image_postSet_cb);
 
         end
         
@@ -196,6 +212,24 @@ classdef ImageData < handle
         
         function loadVisibleSubImage(this, vis)
 %             persistent cubeMap
+            
+            % If the bufferType is cubed then a cell array to fill with
+            % data has to be present. If this fails to be created the
+            % function returns without making changes.
+            if isempty(this.image) && strcmp(this.sourceType, 'cubed')
+                try
+                    this.image = cell(this.cubeRange{2}(2)-this.cubeRange{2}(1)+1, ...
+                        this.cubeRange{1}(2)-this.cubeRange{1}(1)+1, ...
+                        this.cubeRange{3}(2)-this.cubeRange{3}(1)+1);
+                catch e
+                    EX.identifier = 'ImageData.loadVisibleSubImage: Buffer not filled!';
+                    EX.message = 'Could not find necessary cube range information.';
+                    EX.stack = [];
+                    EX.solution = 'Set cubeRange before excecuting this function.';
+                    this.throwException(EX, 'ERROR: Cube range not found');
+                    return;
+                end
+            end
             
             % cubeMap is a matrix of the size of the image cell array. It
             % stores values for each image cubes describing for how long
@@ -270,7 +304,7 @@ classdef ImageData < handle
         end
         
         function [planes] = createDisplayPlanes ...
-                (this, planes, vis, type)
+                (this, planes, vis, type, imType)
             
             % Iterate over the loaded cube range
             for x = this.minLoadedCube(1) : this.maxLoadedCube(1)
@@ -281,12 +315,12 @@ classdef ImageData < handle
                             [planes.XY, planes.XZ, planes.ZY, ~] = jh_overlayObject( ...
                                 planes.XY, planes.XZ, planes.ZY, ...    images
                                 vis.roundedPosition, ...                position
-                                [x, y, z] .* this.cubeSize, ...         object position
+                                [x, y, z] .* this.cubeSize + this.position, ...         object position
                                 this.image{y+1, x+1, z+1}, ...          object matrix
                                 vis.displaySize, ...                    display size
                                 vis.anisotropyFactor, ...               anisotropy factor
                                 type, ...                               overlay specifier
-                                0);
+                                [1, 0, 0], imType);
                         end
 
                     end
@@ -328,6 +362,35 @@ classdef ImageData < handle
 
         end
         
+        
+    end
+    
+    % Event functions
+    methods (Access = private)
+        
+        function OnImageChanged(this)
+            
+            notify(this, 'ImageChanged');
+            
+        end
+        
+    end
+    
+    methods (Access = protected)
+        
+        function image_postSet_cb(this, src, evnt)
+            
+            if ~isempty(this.image)
+                
+                this.totalImageSize = ...
+                    [size(this.image, 1), size(this.image, 2), size(this.image, 3)] ...
+                    .* this.cubeSize;
+                
+            end
+                
+            this.OnImageChanged();
+            
+        end
         
     end
     
@@ -377,10 +440,65 @@ classdef ImageData < handle
             
         end
         
-        function fillBuffer(this)
+        function fillBuffer(this, vis)
+            
+            if strcmp(this.bufferType, 'whole')
+                
+                this.loadCubedImage();
+                
+            elseif strcmp(this.bufferType, 'cubed')
+                
+                this.loadVisibleSubImage(vis);
+                
+            end
             
         end
 
+        function [planes, visibility] = overlayObject(this, ...
+                planes, ...
+                vis, ...
+                imType, ...
+                screenSize)
+            
+            objectPosition = this.position;
+            objectMatrix = this.image;
+            
+            visibility = false;
+            
+            % Get the current displayed planes if the image is cubed
+            if strcmp(this.bufferType, 'cubed')
+                
+                this.loadVisibleSubImage(vis);
+                
+            else
+                
+            end
+            
+            planesOl = DisplayPlanes( ...
+                zeros(screenSize(2), screenSize(1)), ...  % xy
+                zeros(screenSize(3), screenSize(1)), ...  % xz
+                zeros(screenSize(2), screenSize(3)) ...   % zy
+                );
+            planesOl = this.createDisplayPlanes(planesOl, vis, 'replace', imType);
+
+            planes.XY = jh_overlayLabels( ...
+                planes.XY, planesOl.XY, ...
+                'oneColor', [0.5 0 0], ...
+                'type', 'colorize', ...
+                imType);
+              planes.XZ = jh_overlayLabels( ...
+                planes.XZ, planesOl.XZ, ...
+                'oneColor', [0.5 0 0], ...
+                'type', 'colorize', ...
+                imType);
+            planes.ZY = jh_overlayLabels( ...
+                planes.ZY, planesOl.ZY, ...
+                'oneColor', [0.5 0 0], ...
+                'type', 'colorize', ...
+                imType);
+          
+        end
+        
     end
     
     methods (Access = private)

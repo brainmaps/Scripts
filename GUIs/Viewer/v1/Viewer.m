@@ -33,50 +33,97 @@ classdef Viewer < handle
         
         prefType
         windowBackColor
+        windowName
     end
     
     % The menu
-    properties 
+    properties (Access = protected)
+        
+        % File ...
         m_file
-        m_file_loadImage
-        m_file_loadImage_fromCubedData
-        m_file_saveProject
-        m_file_saveProjectAs
-        m_file_loadProject
+        % > File
+            m_file_loadImage
+            % > Load image
+                m_file_loadImage_fromCubedData
+            % <
+            m_file_loadOverlay
+            % > Load overlay
+                m_file_loadOverlay_cubedData
+                m_file_loadOverlay_imageStack
+                m_file_loadOverlay_matFile
+            % <
+            % -
+            m_file_saveProject
+            m_file_saveProjectAs
+            m_file_loadProject
+        % <
+        
+        % Settings ...
         m_settings
-        m_settings_displaySize
-        m_settings_displaySize_512
-        m_settings_displaySize_256
-        m_settings_displaySize_128
-        m_settings_displaySize_64
-        m_settings_displaySize_other
-        m_settings_anisotropicInterpolationType
-        m_settings_anisotropicInterpolationType_nearest
-        m_settings_anisotropicInterpolationType_bilinear
-        m_settings_anisotropicInterpolationType_bicubic
-        m_settings_anisotropicInterpolationType_box
-        m_settings_anisotropicInterpolationType_lanczos2
-        m_settings_anisotropicInterpolationType_lanczos3
-        m_settings_bufferType
-        m_settings_bufferType_wholeImage
-        m_settings_bufferType_cubed
-        m_settings_sectionalPlanes
-        m_settings_overlayObjects
-        m_settings_advanced
-        m_settings_switchImage
-        m_settings_images
-        m_settings_images_image
+        % > Setting
+            m_settings_displaySize
+            % > Display size
+                m_settings_displaySize_512
+                m_settings_displaySize_256
+                m_settings_displaySize_128
+                m_settings_displaySize_64
+                % -
+                m_settings_displaySize_other
+            % <
+            m_settings_anisotropicInterpolationType
+            % > Anisotropic interpolation type
+                m_settings_anisotropicInterpolationType_nearest
+                m_settings_anisotropicInterpolationType_bilinear
+                m_settings_anisotropicInterpolationType_bicubic
+                m_settings_anisotropicInterpolationType_box
+                m_settings_anisotropicInterpolationType_lanczos2
+                m_settings_anisotropicInterpolationType_lanczos3
+            % <
+            m_settings_bufferType
+            % > Buffer type
+                m_settings_bufferType_wholeImage
+                m_settings_bufferType_cubed
+            % <
+            % -
+            m_settings_sectionalPlanes
+            m_settings_overlayObjects
+            % -
+            m_settings_switchImage
+            m_settings_images
+            % > Images
+                m_settings_images_image
+            % <
+            m_settings_overlays
+            % > Overlays
+                m_settings_overlays_overlay
+                % > Overlay_n
+                    m_settings_overlays_overlay_bufferType
+                    % > Buffer type
+                        m_settings_overlays_overlay_bufferType_whole
+                        m_settings_overlays_overlay_bufferType_cubed
+                    % <
+                    m_settings_overlays_overlay_visible
+                    % -
+                    m_settings_overlays_overlay_close
+                % <
+            % <
+            % -
+            m_settings_advanced
+        % <
+        
         m_tools
-        m_overlays
-        m_overlays_loadedOverlays
-        m_overlays_loadOverlay
-        m_overlays_loadOverlay_cubedData
-        m_overlays_loadOverlay_imageStack
-        m_overalys_loadOverlay_mFile
-        m_overlays_addBlank
+        
+%         m_overlays
+%         m_overlays_loadedOverlays
+%         m_overlays_loadOverlay
+%         m_overlays_loadOverlay_cubedData
+%         m_overlays_loadOverlay_imageStack
+%         m_overalys_loadOverlay_mFile
+%         m_overlays_addBlank
+        
     end
     
-    properties (SetAccess = private)
+    properties (SetAccess = private, GetAccess = private)
         screenSize
 %         windowSize
         initialWindowPosition
@@ -84,19 +131,24 @@ classdef Viewer < handle
     end
     
     % Default values
-    properties (SetAccess = protected)
+    properties (SetAccess = public, GetAccess = public)
         visualization
         mainSettings = MainSettings('single', 'DefaultUicontrolBackgroundColor');
+        fileIO
+    end
+    
+    properties (Access = public, SetObservable)
+        
         image   % Is a cell of ImageData objects
         overlay
-        fileIO
+       
     end
     
     properties (Constant)
         defaultWindowSize = [800 600];
     end
     
-    %%
+    
     methods
         %% Constructor
         
@@ -105,14 +157,20 @@ classdef Viewer < handle
             % SYNOPSIS
             %   h = Viewer();
             %   h = Viewer(___, 'name', name)
+            %   h = Viewer(___, 'image', { imageProps } )
             %
             % INPUT
             %   name: Name of the window
+            %   imageProps: Properties of an image as used in the
+            %       constructor for the ImageData class
+            %       E.g.:
+            %       {imageProps} = { 'name', 'Image1', 'bufferType','whole', 'sourceType', 'cubed', ... }
             
             %% Check input
             
             % Set defaults
-            name = 'Viewer';
+            MainWindow.windowName = 'Viewer';
+            addImage = [];
                 
             % Check input
             i = 0;
@@ -120,18 +178,26 @@ classdef Viewer < handle
                 i = i+1;
         
                 if strcmp(varargin{i}, 'name')
-                    name = varargin{i+1};
+                    MainWindow.windowName = varargin{i+1};
+                    i = i+1;
+                end
+                if strcmp(varargin{i}, 'image')
+                    try
+                        addImage = varargin{i+1};
+                    catch
+                        return;
+                    end
                     i = i+1;
                 end
                 
             end
-                        
+            
             %% The window
             
             % Main window
             MainWindow.Figure = figure( ...
                 'MenuBar', 'none', ...
-                'Name', name, ...
+                'Name', MainWindow.windowName, ...
                 'NumberTitle', 'off', ...
                 'ToolBar', 'none', ...
                 'Position', MainWindow.initialWindowPosition, ...
@@ -185,31 +251,49 @@ classdef Viewer < handle
                 'SliderStep', [.01 .1], ...
                 'Max', 2);
             
-            %% The Menu
-
-            % File...
+            %% The Menu:
+            %% File...
             MainWindow.m_file = uimenu(MainWindow.Figure, ...
                 'Label', 'File');
-            MainWindow.m_file_loadImage = uimenu(MainWindow.m_file, ...
-                'Label', 'Load image');
-            MainWindow.m_file_loadImage_fromCubedData = uimenu(MainWindow.m_file_loadImage, ...
-                'Label', 'From cubed data', ...
-                'Callback', @MainWindow.m_file_loadImage_fromCubedData_callback, ...
-                'Accelerator', 'i');
-            MainWindow.m_file_saveProject = uimenu(MainWindow.m_file, ...
-                'Label', 'Save project', ...
-                'Callback', @m_file_saveProject_callback, ...
-                'Separator', 'on', ...
-                'Accelerator', 's');
-            MainWindow.m_file_saveProjectAs = uimenu(MainWindow.m_file, ...
-                'Label', 'Save project as', ...
-                'Callback', @m_file_saveProjectAs_callback);
-            MainWindow.m_file_loadProject = uimenu(MainWindow.m_file, ...
-                'Label', 'Load project', ...
-                'Callback', @m_file_loadProject_callback, ...
-                'Accelerator', 'l');
+            % > File
+                MainWindow.m_file_loadImage = uimenu(MainWindow.m_file, ...
+                    'Label', 'Load image');
+                % > Load image
+                    MainWindow.m_file_loadImage_fromCubedData = uimenu(MainWindow.m_file_loadImage, ...
+                        'Label', 'From cubed data', ...
+                        'Callback', @MainWindow.m_file_loadImage_fromCubedData_callback, ...
+                        'Accelerator', 'i');
+                % <
+                MainWindow.m_file_loadOverlay = uimenu(MainWindow.m_file, ...
+                    'Label', 'Load overlay');
+                % > Load overlay
+                    MainWindow.m_file_loadOverlay_cubedData = uimenu(MainWindow.m_file_loadOverlay, ...
+                        'Label', 'Cubed data', ...
+                        'Callback', @MainWindow.m_file_loadOverlay_cubedData_callback);
+                    MainWindow.m_file_loadOverlay_imageStack = uimenu(MainWindow.m_file_loadOverlay, ...
+                        'Label', 'Image stack', ...
+                        'Callback', @MainWindow.m_file_loadOverlay_imageStack_callback, ...
+                        'Enable', 'off');
+                    MainWindow.m_file_loadOverlay_matFile = uimenu(MainWindow.m_file_loadOverlay, ...
+                        'Label', 'Mat-file', ...
+                        'Callback', @MainWindow.m_file_loadOverlay_matFile_callback);
+                % <
+                % -
+                MainWindow.m_file_saveProject = uimenu(MainWindow.m_file, ...
+                    'Label', 'Save project', ...
+                    'Callback', @m_file_saveProject_callback, ...
+                    'Separator', 'on', ...
+                    'Accelerator', 's');
+                MainWindow.m_file_saveProjectAs = uimenu(MainWindow.m_file, ...
+                    'Label', 'Save project as', ...
+                    'Callback', @m_file_saveProjectAs_callback);
+                MainWindow.m_file_loadProject = uimenu(MainWindow.m_file, ...
+                    'Label', 'Load project', ...
+                    'Callback', @m_file_loadProject_callback, ...
+                    'Accelerator', 'l');
+            % <
 
-            % Settings...
+            %% Settings...
             MainWindow.m_settings = uimenu(MainWindow.Figure, ...
                 'Label', 'Settings');
             % > Settings
@@ -265,6 +349,7 @@ classdef Viewer < handle
                     MainWindow.m_settings_bufferType_cubed = uimenu(MainWindow.m_settings_bufferType, ...
                         'Label', 'Cubed', ...
                         'Callback', @MainWindow.m_settings_bufferType_cubed_callback);
+                % <
                 % -
                 MainWindow.m_settings_sectionalPlanes = uimenu(MainWindow.m_settings, ...
                     'Label', 'Sectional planes', ...
@@ -284,44 +369,65 @@ classdef Viewer < handle
                 MainWindow.m_settings_images = uimenu(MainWindow.m_settings, ...
                     'Label', 'Images', ...
                     'Enable', 'off');
+                % >
+                    % All loaded images
+                    % Menu items are created in function loadNewImage(type)
+                % <
+                MainWindow.m_settings_overlays = uimenu(MainWindow.m_settings, ...
+                    'Label', 'Overlays', ...
+                    'Enable', 'off');
+                % >
+                    % All loaded overlays
+                % <
                 % -
                 MainWindow.m_settings_advanced = uimenu(MainWindow.m_settings, ...
                     'Label', 'Advanced', ...
                     'Separator', 'on', ...
                     'Enable', 'off');
-            % Tools...
+                
+            %% Tools...
             MainWindow.m_tools = uimenu(MainWindow.Figure, ...
                 'Label', 'Tools');
 
-            % Overlays...
-            MainWindow.m_overlays = uimenu(MainWindow.Figure, ...
-                'Label', 'Overlays');
-            % > Overlays
-                MainWindow.m_overlays_loadedOverlays = uimenu(MainWindow.m_overlays, ...
-                    'Label', 'Loaded overlays');
-                % -
-                MainWindow.m_overlays_loadOverlay = uimenu(MainWindow.m_overlays, ...
-                    'Label', 'Load overlay', ...
-                    'Separator', 'on');
-                % > Load overlay
-                    MainWindow.m_overlays_loadOverlay_cubedData = uimenu(MainWindow.m_overlays_loadOverlay, ...
-                        'Label', 'Cubed data', ...
-                        'Callback', @MainWindow.m_overlays_loadOverlay_cubedData_callback, ...
-                        'Enable', 'off');
-                    MainWindow.m_overlays_loadOverlay_imageStack = uimenu(MainWindow.m_overlays_loadOverlay, ...
-                        'Label', 'Image stack', ...
-                        'Callback', @MainWindow.m_overlays_loadOverlay_imageStack_callback, ...
-                        'Enable', 'off');
-                    MainWindow.m_overalys_loadOverlay_mFile = uimenu(MainWindow.m_overlays_loadOverlay, ...
-                        'Label', 'M-file', ...
-                        'Callback', @MainWindow.m_overlays_loadOverlay_mFile_callback);
-                % <
-                MainWindow.m_overlays_addBlank = uimenu(MainWindow.m_overlays, ...
-                    'Label', 'Add blank', ...
-                    'Callback', @MainWindow.m_overlays_addBlank_callback, ...
-                    'Enable', 'off');
+%             % Overlays...
+%             MainWindow.m_overlays = uimenu(MainWindow.Figure, ...
+%                 'Label', 'Overlays');
+%             % > Overlays
+%                 MainWindow.m_overlays_loadedOverlays = uimenu(MainWindow.m_overlays, ...
+%                     'Label', 'Loaded overlays');
+%                 % -
+%                 MainWindow.m_overlays_loadOverlay = uimenu(MainWindow.m_overlays, ...
+%                     'Label', 'Load overlay', ...
+%                     'Separator', 'on');
+%                 % > Load overlay
+%                     MainWindow.m_overlays_loadOverlay_cubedData = uimenu(MainWindow.m_overlays_loadOverlay, ...
+%                         'Label', 'Cubed data', ...
+%                         'Callback', @MainWindow.m_overlays_loadOverlay_cubedData_callback, ...
+%                         'Enable', 'off');
+%                     MainWindow.m_overlays_loadOverlay_imageStack = uimenu(MainWindow.m_overlays_loadOverlay, ...
+%                         'Label', 'Image stack', ...
+%                         'Callback', @MainWindow.m_overlays_loadOverlay_imageStack_callback, ...
+%                         'Enable', 'off');
+%                     MainWindow.m_overalys_loadOverlay_mFile = uimenu(MainWindow.m_overlays_loadOverlay, ...
+%                         'Label', 'M-file', ...
+%                         'Callback', @MainWindow.m_overlays_loadOverlay_mFile_callback);
+%                 % <
+%                 MainWindow.m_overlays_addBlank = uimenu(MainWindow.m_overlays, ...
+%                     'Label', 'Add blank', ...
+%                     'Callback', @MainWindow.m_overlays_addBlank_callback, ...
+%                     'Enable', 'off');
 
+            %% Add events
+            
+            addlistener(MainWindow, 'image', 'PostSet', @MainWindow.image_postSet_cb);
+            addlistener(MainWindow, 'overlay', 'PostSet', @MainWindow.overlay_postSet_cb);
+            
+            %%
+            if ~isempty(addImage)
+                MainWindow.image{1} = ImageData(addImage{:});
+            end
             MainWindow.this_afterCreationFcn();
+            
         end
         
         
@@ -363,6 +469,16 @@ classdef Viewer < handle
             value = [MainWindow.screenSize(3)/2 - ws(1)/2, MainWindow.screenSize(4)/2 - ws(2)/2, ws(1), ws(2)];
         end
         
+        
+    end
+    
+    events 
+        
+        ImageDataChanged
+        ImageDataNumberChanged
+        
+        OverlayDataChanged
+        OverlayDataNumberChanged
         
     end
     
@@ -424,6 +540,14 @@ classdef Viewer < handle
         function this_afterCreationFcn(this)
             % Check all menu items according to their corresponding values
             this.checkAllMenuItems();
+            
+            if ~isempty(this.image)
+%                 this.image{1}.loadVisibleSubImage(this.visualization); 
+                this.image{1}.fillBuffer();
+                this.createImageDisplay();
+                this.displayCurrentPosition('set');
+            end
+            
         end
         function this_keyPressFcn(this, ~, eventdata)
 
@@ -560,6 +684,14 @@ classdef Viewer < handle
             
             this.loadNewImage('cubed');
             
+        end
+        function m_file_loadOverlay_cubedData_callback(this, ~, ~)
+            this.loadNewOverlay('cubed');
+        end
+        function m_file_loadOverlay_matFile_callback(this, ~, ~)
+            
+            this.loadNewOverlay('matFile');
+
         end
 %         function m_file_saveProject_callback(hObject, ~)
 %             handles = guidata(hObject);
@@ -705,29 +837,182 @@ classdef Viewer < handle
             this.switchImage(ID);
             
         end
-        
-        function m_overlays_loadOverlay_mFile_callback(this, ~, ~)
-
-            % Add entry to the overlays
-            this.overlay{length(this.overlay) + 1} ...
-                = ImageData( ...
-                    'anisotropic', this.image{1}.anisotropic, ...
-                    'bufferType', this.image{1}.bufferType, ...
-                    'sourceFolder', this.fileIO.defaultFolder, ...
-                    'sourceType', 'matFile', ...
-                    'position', [0, 0, 0], ...
-                    'cubeSize', [128,128,128]);
+        function m_settings_overlays_overlay_bufferType_cubed_callback(this, src, ~)
             
-            % Load the image
-            this.overlay{length(this.overlay)}.loadDataDlg();
-
+            % Get overlay id
+            ID = find(this.m_settings_overlays_overlay_bufferType_cubed == src);
+            
+            this.overlay{ID}.bufferType = 'cubed';
+            set(this.m_settings_overlays_overlay_bufferType_cubed(ID), 'Checked', 'on');
+            set(this.m_settings_overlays_overlay_bufferType_whole(ID), 'Checked', 'off');
+            
         end
+        function m_settings_overlays_overlay_bufferType_whole_callback(this, src, ~)
+            
+            % Get overlay id
+            ID = find(this.m_settings_overlays_overlay_bufferType_whole == src);
+            
+            this.overlay{ID}.bufferType = 'whole';
+            
+            if ~isempty(this.overlay{ID}.image);
+                this.overlay{ID}.loadCubedImage();
+                this.displayCurrentPosition('');
+%                 this.activateObjects();
+            end
 
+            set(this.m_settings_overlays_overlay_bufferType_cubed(ID), 'Checked', 'off');
+            set(this.m_settings_overlays_overlay_bufferType_whole(ID), 'Checked', 'on');
+            this.displayCurrentPosition('');
+            
+        end
+        
+        %% Property callbacks
+        
+        function image_postSet_cb(this, ~, ~)
+            
+            % Detect change in the number of imageData objects
+            persistent noImData
+            if isempty(noImData), noImData = 0; end
+            
+            if noImData ~= length(this.image)
+                this.OnImageDataNumberChanged();
+                noImData = length(this.image);
+            end
+  
+        end
+        function image_imageChanged_cb(this, ~, ~)
+            
+            this.OnImageDataChanged();
+            
+        end
+        
+        function overlay_postSet_cb(this, ~, ~)
+            
+            % Detect change in the number of imageData objects
+            persistent noOvData
+            if isempty(noOvData), noOvData = 0; end
+            
+            if noOvData ~= length(this.overlay)
+                this.OnOverlayDataNumberChanged();
+                noOvData = length(this.overlay);
+            end
+            
+        end
+        function overlay_imageChanged_cb(this, ~, ~)
+            
+            this.OnOverlayDataChanged();
+            
+        end
+        
+    end
+    
+    % Event functions
+    methods (Access = private)
+       
+        function OnImageDataNumberChanged(this)
+            persistent noImData
+            if isempty(noImData), noImData = 0; end
+            
+            % Only invoke this if an image was added
+            if noImData < length(this.image)
+                addlistener(this.image{end}, 'ImageChanged', @this.image_imageChanged_cb);
+            end
+            
+            noImData = length(this.image);
+            
+            % Add image to menu
+            this.m_settings_images_image(length(this.image)) = uimenu(this.m_settings_images, ...
+                'Label', this.image{length(this.image)}.name, ...
+                'Callback', @this.m_settings_images_image_callback);
+            set(this.m_settings_images, 'Enable', 'on');
+            
+            % Check menu item of the bufferType
+            this.checkBufferType();
+            % Check current image
+            this.checkVisibleImage();
+%             
+%             this.createImageDisplay();
+            try
+                this.displayCurrentPosition('');
+            catch
+            end
+            this.activateObjects();
+            
+            % Call the event
+            notify(this, 'ImageDataNumberChanged');
+        end
+        
+        function OnImageDataChanged(this)
+            
+            % Check menu item of the bufferType
+            this.checkBufferType;
+            % Check current image
+            this.checkVisibleImage();
+            
+            try
+                this.displayCurrentPosition('');
+            catch
+            end
+            
+           % Call the event
+            notify(this, 'ImageDataChanged');
+            
+        end
+        
+        function OnOverlayDataNumberChanged(this)
+            
+            persistent noOvData
+            if isempty(noOvData), noOvData = 0; end
+            
+            if noOvData < length(this.overlay)
+                addlistener(this.overlay{end}, 'ImageChanged', @this.overlay_imageChanged_cb);
+            end
+            
+            noOvData = length(this.overlay);
+            
+             % Add overlay to menu
+            this.m_settings_overlays_overlay(length(this.overlay)) = uimenu(this.m_settings_overlays, ...
+                'Label', this.overlay{length(this.overlay)}.name);
+            this.m_settings_overlays_overlay_bufferType(length(this.overlay)) = uimenu(this.m_settings_overlays_overlay(length(this.overlay)), ...
+                'Label', 'BufferType');
+            this.m_settings_overlays_overlay_bufferType_cubed(length(this.overlay)) = uimenu(this.m_settings_overlays_overlay_bufferType(length(this.overlay)), ...
+                'Label', 'Cubed', ...
+                'Callback', @this.m_settings_overlays_overlay_bufferType_cubed_callback);
+            this.m_settings_overlays_overlay_bufferType_whole(length(this.overlay)) = uimenu(this.m_settings_overlays_overlay_bufferType(length(this.overlay)), ...
+                'Label', 'Whole', ...
+                'Callback', @this.m_settings_overlays_overlay_bufferType_whole_callback);
+            this.m_settings_overlays_overlay_visible(length(this.overlay)) = uimenu(this.m_settings_overlays_overlay(length(this.overlay)), ...
+                'Label', 'Visible', ...
+                'Callback', @this.m_settings_overlays_overlay_visible_callback, ...
+                'Enable', 'off');
+            this.m_settings_overlays_overlay_close(length(this.overlay)) = uimenu(this.m_settings_overlays_overlay(length(this.overlay)), ...
+                'Label', 'Close', ...
+                'Separator', 'on', ...
+                'Callback', @this.m_settings_overlays_overlay_close_callback, ...
+                'Enable', 'off');
+            
+            set(this.m_settings_overlays, 'Enable', 'on');
+            
+            try
+                this.displayCurrentPosition('');
+            catch
+            end
+            this.activateObjects();
+            
+            % Call this event
+            notify(this, 'OverlayDataNumberChanged');
+            
+       end
+        
+        function OnOverlayDataChanged(this)
+            
+        end
         
     end
     
     methods (Access = private)
         %% Other functions
+        
         function throwException(~, EX, title)
 
             if isempty(title)
@@ -803,15 +1088,28 @@ classdef Viewer < handle
 
             % Draw the background image
             [planes] = this.image{im}.createDisplayPlanes ...
-                (planes, this.visualization, 'replace');
+                (planes, this.visualization, 'replace', 'gray');
 
             if ~isempty(this.overlay)
                 % Add overlays
-                [planes.XY, planes.XZ, planes.ZY, visibility] = jh_overlayObject( ...
-                    planes.XY, planes.XZ, planes.ZY, ...
-                    this.visualization.currentPosition, this.overlay{1}.position, this.overlay{1}.image{1}, ...
-                    this.visualization.displaySize, this.visualization.anisotropyFactor, ...
-                    'oneColor', [0.5, 0, 0]);
+                imType = 'gray';
+                for i = 1:length(this.overlay)
+                    [planes, ~] = this.overlay{i}.overlayObject( ...
+                        planes, ...
+                        this.visualization, ...
+                        imType, ...
+                        n);
+                        
+%                     [planes.XY, planes.XZ, planes.ZY, ~] = jh_overlayObject( ...
+%                         planes.XY, planes.XZ, planes.ZY, ...
+%                         this.visualization.currentPosition, ...
+%                         this.overlay{i}.position, ...
+%                         this.overlay{i}.image{1}, ...
+%                         this.visualization.displaySize, ...
+%                         this.visualization.anisotropyFactor, ...
+%                         'oneColor', [0.5, 0, 0], imType);
+                    imType = 'rgb';
+                end
             else
                 % Convert to RGB
                 planes.toRGB();
@@ -1060,6 +1358,19 @@ classdef Viewer < handle
                     set(this.m_settings_bufferType_cubed, 'Checked', 'on');
             end
         end
+        function checkVisibleImage(this)
+            
+            % Check the menu entry
+            ID = this.visualization.currentImage;
+            for i = 1:length(this.m_settings_images_image)
+                set(this.m_settings_images_image(i), 'Checked', 'off');
+            end
+            set(this.m_settings_images_image(ID), 'Checked', 'on');
+            
+            % Write name to window
+            set(this.Figure, 'Name', [this.windowName ' @ (#' num2str(ID) ') ' this.image{ID}.name]);
+            
+        end
         
        	function loadNewImage(this, type)
             
@@ -1070,16 +1381,7 @@ classdef Viewer < handle
                     return;
                 end
             end
-            
-            % Add image to menu
-            this.m_settings_images_image(length(this.image)) = uimenu(this.m_settings_images, ...
-            'Label', this.image{length(this.image)}.name, ...
-            'Callback', @this.m_settings_images_image_callback);
-            set(this.m_settings_images, 'Enable', 'on');
-            
-            % Check menu item of the bufferType
-            this.checkBufferType;
-          
+
         end
         function success = loadImageFromCubedData(this)
             
@@ -1092,13 +1394,16 @@ classdef Viewer < handle
                 'cubeSize', [128 128 128], ...
                 'anisotropic', [1 1 3], ...
                 'position', [0 0 0], ...
-                'name', 'ImageData')}];
+                'name', ['ImageData' num2str(length(this.image)+1)], ...
+                'sourceFolder', this.fileIO.defaultFolder, ...
+                'sourceType', 'cubed')}];
 
             
-            if isempty(this.image{end}.sourceFolder)
-                this.image{end}.sourceFolder = this.fileIO.defaultFolder;
-            end
-            this.image{end}.sourceType = 'cubed';
+            % Set the new image for display
+            this.visualization.currentImage = length(this.image);
+            
+            % Anisotropy also has to be set for display
+            this.visualization.anisotropyFactor = this.image{end}.anisotropic;
             
             % Selects data using a dialog window; returns 1 for success
             success = this.image{end}.loadDataDlg();
@@ -1107,17 +1412,68 @@ classdef Viewer < handle
                 this.image = this.image(1:end-1);
                 return;
             end
-            
-            % Set the new image for display
-            this.visualization.currentImage = length(this.image);
-            
-            % Anisotropy also has to be set for display
-            this.visualization.anisotropyFactor = this.image{end}.anisotropic;
 
-            this.createImageDisplay();
-            this.displayCurrentPosition('');
-            this.activateObjects();
+        end
+        
+        function loadNewOverlay(this, type)
             
+            if strcmp(type, 'matFile')
+                success = this.loadOverlayFromMatFile();
+            elseif strcmp(type, 'cubed')
+                success = this.loadOverlayFromCubedData();
+            end
+            if success ~= 1
+                return;
+            end
+
+        end
+        function success = loadOverlayFromCubedData(this)
+            
+            % Add entry to the overlays
+            this.overlay{length(this.overlay) + 1} ...
+                = OverlayData( ...
+                    'anisotropic', this.image{1}.anisotropic, ...
+                    'dataType', 'single', ...
+                    'bufferType', 'cubed', ...
+                    'sourceFolder', this.fileIO.defaultFolder, ...
+                    'sourceType', 'cubed', ...
+                    'position', [0, 0, 0], ...
+                    'cubeSize', [128,128,128], ...
+                    'name', ['Overlay' num2str(length(this.overlay)+1)], ...
+                    'cubeRange', {[0 3], [0 3], [0 3]} );
+                
+            % Load the image
+            success = this.overlay{end}.loadDataDlg();
+            if success ~= 1
+                % Delete last entry if no image was loaded
+                this.overlay = this.overlay(1:end-1);
+                return;
+            end
+            
+           
+        end
+        function success = loadOverlayFromMatFile(this)
+            
+            % Add entry to the overlays
+            this.overlay{length(this.overlay) + 1} ...
+                = OverlayData( ...
+                    'anisotropic', this.image{1}.anisotropic, ...
+                    'bufferType', this.image{1}.bufferType, ...
+                    'sourceFolder', this.fileIO.defaultFolder, ...
+                    'sourceType', 'matFile', ...
+                    'position', [0, 0, 0], ...
+                    'cubeSize', [128,128,128], ...
+                    'name', ['Overlay' num2str(length(this.overlay)+1)], ...
+                    'cubeRange', {[0 3], [0 3], [0 3]} );
+            
+            % Load the image
+            success = this.overlay{end}.loadDataDlg();
+            if success ~= 1
+                % Delete last entry if no image was loaded
+                this.overlay = this.overlay(1:end-1);
+                return;
+            end
+
         end
         
         function switchImage(this, newID)
@@ -1134,7 +1490,8 @@ classdef Viewer < handle
             
             this.displayCurrentPosition('set');
             this.checkBufferType();
-            
+            this.checkVisibleImage();
+
         end
 
 
