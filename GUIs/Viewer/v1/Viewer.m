@@ -123,7 +123,7 @@ classdef Viewer < handle
         
     end
     
-    properties (SetAccess = private, GetAccess = private)
+    properties (Access = public)
         screenSize
 %         windowSize
         initialWindowPosition
@@ -149,6 +149,22 @@ classdef Viewer < handle
     end
     
     
+    events 
+        
+        ImageDataChanged
+        ImageDataNumberChanged
+        
+        OverlayDataChanged
+        OverlayDataNumberChanged
+        
+        DisplayMouseDownLeft
+        DisplayMouseDownRight
+        DisplayMouseUpLeft
+        DisplayMouseUpRight
+        
+    end
+    
+   
     methods
         %% Constructor
         
@@ -431,32 +447,6 @@ classdef Viewer < handle
         end
         
         
-        %% Display callbacks
-        
-        function displayXY_buttonDownFcn(this, ~, ~)
-            this.userInput.mouseEvent.downOn = 'xy';
-            % Get the position
-            pos = round(get(this.AxesDisplayXY, 'CurrentPoint'));
-            this.userInput.mouseEvent.downAt = pos(2, 1:2); clear pos;
-
-        end
-
-        function displayXZ_buttonDownFcn(this, ~, ~)
-            this.userInput.mouseEvent.downOn = 'xz';
-            % Get the position
-            pos = round(get(this.AxesDisplayXZ, 'CurrentPoint'));
-            this.userInput.mouseEvent.downAt = pos(2, 1:2); clear pos;
-
-        end
-
-        function displayZY_buttonDownFcn(this, ~, ~)
-            this.userInput.mouseEvent.downOn = 'zy';
-            % Get the position
-            pos = round(get(this.AxesDisplayZY, 'CurrentPoint'));
-            this.userInput.mouseEvent.downAt = pos(2, 1:2); clear pos;
-
-        end
-
         
         %% Property get functions
         function value = get.screenSize(~)
@@ -472,17 +462,42 @@ classdef Viewer < handle
         
     end
     
-    events 
-        
-        ImageDataChanged
-        ImageDataNumberChanged
-        
-        OverlayDataChanged
-        OverlayDataNumberChanged
-        
-    end
-    
     methods (Access = protected)    
+        %% Display callbacks
+        
+        function displayXY_buttonDownFcn(this, ~, ~)
+            
+            this.userInput.mouseEvent.downOn = 'xy';
+            % Get the position
+            pos = round(get(this.AxesDisplayXY, 'CurrentPoint'));
+            this.userInput.mouseEvent.downAt = pos(2, 1:2); clear pos;
+            
+            this.OnDisplayMouseDown('xy', this.userInput.mouseEvent.downAt);
+
+        end
+
+        function displayXZ_buttonDownFcn(this, ~, ~)
+            
+            this.userInput.mouseEvent.downOn = 'xz';
+            % Get the position
+            pos = round(get(this.AxesDisplayXZ, 'CurrentPoint'));
+            this.userInput.mouseEvent.downAt = pos(2, 1:2); clear pos;
+
+            this.OnDisplayMouseDown('xz', this.userInput.mouseEvent.downAt);
+            
+        end
+
+        function displayZY_buttonDownFcn(this, ~, ~)
+            
+            this.userInput.mouseEvent.downOn = 'zy';
+            % Get the position
+            pos = round(get(this.AxesDisplayZY, 'CurrentPoint'));
+            this.userInput.mouseEvent.downAt = pos(2, 1:2); clear pos;
+            
+            this.OnDisplayMouseDown('zy', this.userInput.mouseEvent.downAt);
+            
+        end
+
         %% MainWindow callbacks
         function this_closeRequestFcn(this, ~, ~)
             delete(this.Figure);
@@ -638,9 +653,25 @@ classdef Viewer < handle
 
         end
         function this_windowButtonUpFcn(this, ~, ~)
-
+            
+            switch this.userInput.mouseEvent.downOn
+                case 'xy'
+                    pos = round(get(this.AxesDisplayXY, 'CurrentPoint'));
+                case 'xz'
+                    pos = round(get(this.AxesDisplayXZ, 'CurrentPoint'));
+                case 'zy'
+                    pos = round(get(this.AxesDisplayZY, 'CurrentPoint'));
+            end
+            
+            switch this.userInput.mouseEvent.keySpecifier
+                case 'normal'
+                    this.OnDisplayMouseUpLeft(this.userInput.mouseEvent.downOn, pos(2, 1:2));
+                case 'alt'
+                    this.OnDisplayMouseUpRight(this.userInput.mouseEvent.downOn, pos(2, 1:2));                    
+            end
             this.userInput.mouseEvent.downOn = [];
             this.userInput.mouseEvent.downAt = [];
+            
         end
         function this_windowScrollWheelFcn(this, ~, eventdata)
 
@@ -693,19 +724,6 @@ classdef Viewer < handle
             this.loadNewOverlay('matFile');
 
         end
-%         function m_file_saveProject_callback(hObject, ~)
-%             handles = guidata(hObject);
-% 
-%         end
-%         function m_file_saveProjectAs_callback(hObject, ~)
-%             handles = guidata(hObject);
-% 
-%         end
-%         function m_file_loadProject_callback(hObject, ~)
-%             handles = guidata(hObject);
-% 
-%         end
-% 
         function m_settings_displaySize_512_callback(this, ~, ~)
             this.visualization.displaySize = 512;
             this.createImageDisplay();
@@ -1005,6 +1023,54 @@ classdef Viewer < handle
        end
         
         function OnOverlayDataChanged(this)
+            
+            try
+                this.displayCurrentPosition('');
+            catch
+            end
+           
+            % Call this event
+            notify(this, 'OverlayDataChanged');
+            
+        end
+        
+        function OnDisplayMouseDown(this, display, position)
+            
+            % Get the mouse button
+            bttn = get(this.Figure, 'SelectionType');
+            this.userInput.mouseEvent.keySpecifier = bttn;
+            
+            % Call the according event
+            switch bttn
+                case 'normal'
+                    this.OnDisplayMouseDownLeft(display, position);
+                case 'alt'
+                    this.OnDisplayMouseDownRight(display, position);
+            end
+
+        end
+        function OnDisplayMouseDownLeft(this, display, position)
+            
+            notify(this, 'DisplayMouseDownLeft', DisplayEventData(display, position));
+            
+        end
+        function OnDisplayMouseDownRight(this, display, position)
+            
+            notify(this, 'DisplayMouseDownRight', DisplayEventData(display, position));
+            
+        end
+        
+        function OnDisplayMouseUp(this, position)
+            
+        end
+        function OnDisplayMouseUpLeft(this, display, position)
+            
+            notify(this, 'DisplayMouseUpLeft', DisplayEventData(display, position));
+            
+        end
+        function OnDisplayMouseUpRight(this, display, position)
+            
+            notify(this, 'DisplayMouseUpRight', DisplayEventData(display, position));
             
         end
         

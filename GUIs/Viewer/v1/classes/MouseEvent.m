@@ -4,6 +4,7 @@ classdef MouseEvent
         downOn
         downAt
         position
+        keySpecifier
     end
     
 end
