@@ -141,6 +141,84 @@ classdef OverlayData < ImageData
             
         end
         
+        function loadVisibleSubImage(this, vis)
+            
+            %% Put functionalities for all datatypes here:
+            % >>>
+            
+            % <<<
+            
+            %% For inherited data types the original function is called
+            if ~strcmp(this.dataStructure, 'listed')
+                loadVisibleSubImage@ImageData(vis);
+                return;
+            end
+            
+            %% Put functionalities for only the listed data type here:
+            % >>>
+            
+            % <<<
+            
+        end
+        
+        function [planes] = createDisplayPlanes ...
+                (this, planes, vis, type, imType)
+            
+            %% Put functionalities for all datatypes here:
+            % >>>
+            
+            % <<<
+            
+            %% For inherited data types the original function is called
+            if ~strcmp(this.dataStructure, 'listed')
+                createDisplayPlanes@ImageData(planes, vis, type, imType);
+                return;
+            end
+                
+            %% Put functionalities for only the listed data type here:
+            % >>>
+            
+            % Step1: find out if the image is present in the currently
+            % displayed section
+            
+            %   Create list of displayed linear indices with respect to the
+            %   overlay data
+            cp = vis.currentPosition;
+            ds = vis.displaySize;
+            af = vis.anisotropyFactor;
+            op = this.position;
+            os = this.totalImageSize;
+            minPosition = round((cp - round(ds/2) - op)./af);
+            maxPosition = round((cp + round(ds/2) - op)./af);
+            minPosition(minPosition<0) = 0;
+            %       For xy
+%             minpXY = [minPosition(1), minPosition(2), minPosition(3)];
+%             minpXYlin = jh_zeroBasedSub2Ind(os, minpXY); 
+%             maxpXY = [maxPosition(1), maxPosition(2), minPosition(3)];
+%             maxpXYlin = jh_zeroBasedSub2Ind(os, maxpXY);
+%             grid = (minpXYlin:maxPosition(2)-minPosition(2)+1);
+%             grid = grid(ones(maxPosition(1)-minPosition(1)+1, 1), :);
+%             grid = ndgrid(minpXYlin:maxPosition(2)-minPosition(2)+1, minpXYlin:maxPosition(1)-minPosition(1)+1)
+            [g1, g2, g3] = meshgrid(minPosition(1):os(2):maxPosition(1)*os(2), minPosition(2):maxPosition(2), (cp(3)-op(3))*os(1)*os(2));
+            gridXY = g1+g2+g3+1;
+            
+            g1(1:3, 1:3)
+            g2(1:3, 1:3)
+            g3(1:3, 1:3)
+            gridXY(1:3, 1:3)
+            
+            clear g1 g2 g3;
+            %       For xz
+%             minpXZ = [minPosition(1), minPosition(3)];
+            %       For zy
+%             minpZY = [minPosition(3), minPosition(1)];
+            
+            
+            
+            % <<<
+
+        end
+        
     end
     
     methods (Access = protected)

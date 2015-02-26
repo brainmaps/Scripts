@@ -203,10 +203,212 @@ classdef ImageData < handle
         end
         
         
+        %% Other
+
+        function throwException(~, EX, title)
+
+            if isempty(title)
+                title = 'ERROR: Unexpected exception';
+            end
+
+            fprintf(2, ['\n    ' title '.\n\n']);
+            ID = EX.identifier;
+            ID = strrep(ID, '\', '\\');
+            fprintf(2, ['        ' ID '\n']);
+            message = EX.message;
+            message = strrep(message, '\', '\\');
+            fprintf(2, ['        ' message '\n\n']);
+
+            if ~isempty(EX.stack)
+                for i = 1:length(EX.stack)
+                    file = EX.stack(i).file;
+                    file = strrep(file, '\', '\\');
+                    fprintf(2, ['        ' file '\n']);
+                    fprintf(2, ['        ' EX.stack(i).name]);
+                    fprintf(2, [' (line: ' num2str(EX.stack(i).line) ')\n\n']);
+                end
+            end
+
+            if isfield(EX, 'solution')
+                fprintf(['    ' EX.solution '\n\n']);
+            end
+
+        end
+        
+        
+    end
+    
+    % Event functions
+    methods (Access = protected)
+        
+        function OnImageChanged(this)
+            
+            notify(this, 'ImageChanged');
+            
+        end
+        
+    end
+    
+    methods (Access = protected)
+        
+        function image_postSet_cb(this, src, evnt)
+            
+            this.image_postSet_fcn();
+            
+        end
+        function image_postSet_fcn(this)
+            
+            if ~isempty(this.image)
+                
+                this.totalImageSize = ...
+                    [size(this.image, 1), size(this.image, 2), size(this.image, 3)] ...
+                    .* this.cubeSize;
+                
+            end
+                
+            this.OnImageChanged();
+            
+        end
+        
+    end
+    
+    methods (Access = public)
+        %%
+        function loadCubedImage(this)
+            
+            im = jh_openCubeRange( ...
+                this.sourceFolder, '', ...
+                'cubeSize', this.cubeSize, ...
+                'range', this.cubeRange{1}, this.cubeRange{2}, this.cubeRange{3}, ...
+                'dataType', this.dataType, ...
+                'outputType', 'cubed', ...
+                'fileType', 'auto');
+
+            this.image = cellfun(@(x) x/255, im, 'UniformOutput', false);
+
+            for i = 1:3
+                this.minLoadedCube(i) = 0;
+                this.maxLoadedCube(i) = this.cubeRange{i}(2)-this.cubeRange{i}(1);
+            end
+                    
+        end
+        
+        function loadMatFileImage(this)
+            
+            imData = load(this.sourceFolder, this.varName);
+            if strcmp(this.bufferType, 'whole')
+                this.image = {imData.(this.varName)};
+            elseif strcmp(this.bufferType, 'cubed')
+                this.image = imData.(this.varName);
+            end
+            
+        end
+        
+        function clearBuffer(this)
+            
+            % >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+            % Clear the buffer also for whole images: Needs reloading of 
+            % the image to be implemented
+            
+            
+            if strcmp(this.bufferType, 'cubed')
+                this.image = cellfun(@(x) [], this.image, 'uniformoutput', false);
+                this.cubeMap(:) = 0;
+            end
+            
+        end
+        
+        function fillBuffer(this, vis)
+            
+            if strcmp(this.bufferType, 'whole')
+                
+                this.loadCubedImage();
+                
+            elseif strcmp(this.bufferType, 'cubed')
+                
+                this.loadVisibleSubImage(vis);
+                
+            end
+            
+        end
+
+        function [planes, visibility] = overlayObject(this, ...
+                planes, ...
+                vis, ...
+                imType, ...
+                screenSize)
+            
+            visibility = false;
+            
+            % Get the current displayed planes if the image is cubed
+            if strcmp(this.bufferType, 'cubed')
+                
+                this.loadVisibleSubImage(vis);
+                
+            else
+                
+            end
+            
+            % Create new display planes for the overlay ...
+            planesOl = DisplayPlanes( ...
+                zeros(screenSize(2), screenSize(1)), ...  % xy
+                zeros(screenSize(3), screenSize(1)), ...  % xz
+                zeros(screenSize(2), screenSize(3)) ...   % zy
+                );
+            % ... and fill them with the overlay             
+            planesOl = this.createDisplayPlanes(planesOl, vis, 'replace', imType);
+            
+            % Perform the actual overlay computation for each plane
+            planes.XY = jh_overlayLabels( ...
+                planes.XY, planesOl.XY, ...
+                'oneColor', [0.5 0 0], ...
+                'type', 'colorize', ...
+                imType);
+            planes.XZ = jh_overlayLabels( ...
+                planes.XZ, planesOl.XZ, ...
+                'oneColor', [0.5 0 0], ...
+                'type', 'colorize', ...
+                imType);
+            planes.ZY = jh_overlayLabels( ...
+                planes.ZY, planesOl.ZY, ...
+                'oneColor', [0.5 0 0], ...
+                'type', 'colorize', ...
+                imType);
+          
+        end
+        
         %% Create display planes
         
+        function [planes] = createDisplayPlanes ...
+                (this, planes, vis, type, imType)
+            
+            % Iterate over the loaded cube range
+            for x = this.minLoadedCube(1) : this.maxLoadedCube(1)
+                for y = this.minLoadedCube(2) : this.maxLoadedCube(2)
+                    for z = this.minLoadedCube(3) : this.maxLoadedCube(3)
+
+                        if ~isempty(this.image{y+1, x+1, z+1})
+                            [planes.XY, planes.XZ, planes.ZY, ~] = jh_overlayObject( ...
+                                planes.XY, planes.XZ, planes.ZY, ...    images
+                                vis.roundedPosition, ...                position
+                                [x, y, z] .* this.cubeSize + this.position, ...         object position
+                                this.image{y+1, x+1, z+1}, ...          object matrix
+                                vis.displaySize, ...                    display size
+                                vis.anisotropyFactor, ...               anisotropy factor
+                                type, ...                               overlay specifier
+                                [1, 0, 0], imType);
+                        end
+
+                    end
+                end
+            end
+            
+        end
+        
+        % This function is exclusively necessary for cubed image data where
+        % only parts of the whole data set are loaded into memory. 
+        % Use this function to load the desired cubes into memory.
         function loadVisibleSubImage(this, vis)
-%             persistent cubeMap
             
             % If the bufferType is cubed then a cell array to fill with
             % data has to be present. If this fails to be created the
@@ -296,207 +498,6 @@ classdef ImageData < handle
             this.minLoadedCube = minVisibleCube;
             this.maxLoadedCube = maxVisibleCube;
 
-        end
-        
-        function [planes] = createDisplayPlanes ...
-                (this, planes, vis, type, imType)
-            
-            % Iterate over the loaded cube range
-            for x = this.minLoadedCube(1) : this.maxLoadedCube(1)
-                for y = this.minLoadedCube(2) : this.maxLoadedCube(2)
-                    for z = this.minLoadedCube(3) : this.maxLoadedCube(3)
-
-                        if ~isempty(this.image{y+1, x+1, z+1})
-                            [planes.XY, planes.XZ, planes.ZY, ~] = jh_overlayObject( ...
-                                planes.XY, planes.XZ, planes.ZY, ...    images
-                                vis.roundedPosition, ...                position
-                                [x, y, z] .* this.cubeSize + this.position, ...         object position
-                                this.image{y+1, x+1, z+1}, ...          object matrix
-                                vis.displaySize, ...                    display size
-                                vis.anisotropyFactor, ...               anisotropy factor
-                                type, ...                               overlay specifier
-                                [1, 0, 0], imType);
-                        end
-
-                    end
-                end
-            end
-            
-        end
-        
-        
-        %% Other
-
-        function throwException(~, EX, title)
-
-            if isempty(title)
-                title = 'ERROR: Unexpected exception';
-            end
-
-            fprintf(2, ['\n    ' title '.\n\n']);
-            ID = EX.identifier;
-            ID = strrep(ID, '\', '\\');
-            fprintf(2, ['        ' ID '\n']);
-            message = EX.message;
-            message = strrep(message, '\', '\\');
-            fprintf(2, ['        ' message '\n\n']);
-
-            if ~isempty(EX.stack)
-                for i = 1:length(EX.stack)
-                    file = EX.stack(i).file;
-                    file = strrep(file, '\', '\\');
-                    fprintf(2, ['        ' file '\n']);
-                    fprintf(2, ['        ' EX.stack(i).name]);
-                    fprintf(2, [' (line: ' num2str(EX.stack(i).line) ')\n\n']);
-                end
-            end
-
-            if isfield(EX, 'solution')
-                fprintf(['    ' EX.solution '\n\n']);
-            end
-
-        end
-        
-        
-    end
-    
-    % Event functions
-    methods (Access = protected)
-        
-        function OnImageChanged(this)
-            
-            notify(this, 'ImageChanged');
-            
-        end
-        
-    end
-    
-    methods (Access = protected)
-        
-        function image_postSet_cb(this, src, evnt)
-            
-            this.image_postSet_fcn();
-            
-        end
-        function image_postSet_fcn(this)
-            
-            if ~isempty(this.image)
-                
-                this.totalImageSize = ...
-                    [size(this.image, 1), size(this.image, 2), size(this.image, 3)] ...
-                    .* this.cubeSize;
-                
-            end
-                
-            this.OnImageChanged();
-            
-        end
-        
-    end
-    
-    methods (Access = public)
-        
-        function loadCubedImage(this)
-            
-            im = jh_openCubeRange( ...
-                this.sourceFolder, '', ...
-                'cubeSize', this.cubeSize, ...
-                'range', this.cubeRange{1}, this.cubeRange{2}, this.cubeRange{3}, ...
-                'dataType', this.dataType, ...
-                'outputType', 'cubed', ...
-                'fileType', 'auto');
-
-            this.image = cellfun(@(x) x/255, im, 'UniformOutput', false);
-
-            for i = 1:3
-                this.minLoadedCube(i) = 0;
-                this.maxLoadedCube(i) = this.cubeRange{i}(2)-this.cubeRange{i}(1);
-            end
-                    
-        end
-        
-        function loadMatFileImage(this)
-            
-            imData = load(this.sourceFolder, this.varName);
-            if strcmp(this.bufferType, 'whole')
-                this.image = {imData.(this.varName)};
-            elseif strcmp(this.bufferType, 'cubed')
-                this.image = imData.(this.varName);
-            end
-            
-        end
-        
-        function clearBuffer(this)
-            
-            % >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-            % Clear the buffer also for whole images: Needs reloading of 
-            % the image to be implemented
-            
-            
-            if strcmp(this.bufferType, 'cubed')
-                this.image = cellfun(@(x) [], this.image, 'uniformoutput', false);
-                this.cubeMap(:) = 0;
-            end
-            
-        end
-        
-        function fillBuffer(this, vis)
-            
-            if strcmp(this.bufferType, 'whole')
-                
-                this.loadCubedImage();
-                
-            elseif strcmp(this.bufferType, 'cubed')
-                
-                this.loadVisibleSubImage(vis);
-                
-            end
-            
-        end
-
-        function [planes, visibility] = overlayObject(this, ...
-                planes, ...
-                vis, ...
-                imType, ...
-                screenSize)
-            
-            objectPosition = this.position;
-            objectMatrix = this.image;
-            
-            visibility = false;
-            
-            % Get the current displayed planes if the image is cubed
-            if strcmp(this.bufferType, 'cubed')
-                
-                this.loadVisibleSubImage(vis);
-                
-            else
-                
-            end
-            
-            planesOl = DisplayPlanes( ...
-                zeros(screenSize(2), screenSize(1)), ...  % xy
-                zeros(screenSize(3), screenSize(1)), ...  % xz
-                zeros(screenSize(2), screenSize(3)) ...   % zy
-                );
-            planesOl = this.createDisplayPlanes(planesOl, vis, 'replace', imType);
-
-            planes.XY = jh_overlayLabels( ...
-                planes.XY, planesOl.XY, ...
-                'oneColor', [0.5 0 0], ...
-                'type', 'colorize', ...
-                imType);
-              planes.XZ = jh_overlayLabels( ...
-                planes.XZ, planesOl.XZ, ...
-                'oneColor', [0.5 0 0], ...
-                'type', 'colorize', ...
-                imType);
-            planes.ZY = jh_overlayLabels( ...
-                planes.ZY, planesOl.ZY, ...
-                'oneColor', [0.5 0 0], ...
-                'type', 'colorize', ...
-                imType);
-          
         end
         
     end

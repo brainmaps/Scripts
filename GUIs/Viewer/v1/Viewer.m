@@ -1140,8 +1140,7 @@ classdef Viewer < handle
         end
 
         function displayCurrentPosition(this, type)
-            
-            im = this.visualization.currentImage;
+            %%
             
             % Abort if nothing has changed
             if strcmp(type, 'checkForChange');
@@ -1152,7 +1151,13 @@ classdef Viewer < handle
                 this.checkForChange('set');
             end
 
-            % Start with the background image
+            %% Start with the background image:
+            
+            % This is the currently visible image (note that only one
+            % background image can be visible, here no overlay is possible
+            % - or at least not yet...)
+            im = this.visualization.currentImage;
+            
             % Load the desired part of the image (if not already open)
             if strcmp(this.image{im}.bufferType, 'cubed')
                 this.image{im}.loadVisibleSubImage(this.visualization);
@@ -1162,7 +1167,7 @@ classdef Viewer < handle
             
             n = round(this.visualization.displaySize ./ this.visualization.anisotropyFactor / 2) *2;
             
-            % Pre-define images 
+            % Pre-define image planes (filled with zeros)
             planes = DisplayPlanes( ...
                 zeros(n(2), n(1)), ...  % xy
                 zeros(n(3), n(1)), ...  % xz
@@ -1173,24 +1178,19 @@ classdef Viewer < handle
             [planes] = this.image{im}.createDisplayPlanes ...
                 (planes, this.visualization, 'replace', 'gray');
 
+            %% Let's get to the overlays
+            
             if ~isempty(this.overlay)
                 % Add overlays
                 imType = 'gray';
                 for i = 1:length(this.overlay)
+                    
                     [planes, ~] = this.overlay{i}.overlayObject( ...
                         planes, ...
                         this.visualization, ...
                         imType, ...
                         n);
-                        
-%                     [planes.XY, planes.XZ, planes.ZY, ~] = jh_overlayObject( ...
-%                         planes.XY, planes.XZ, planes.ZY, ...
-%                         this.visualization.currentPosition, ...
-%                         this.overlay{i}.position, ...
-%                         this.overlay{i}.image{1}, ...
-%                         this.visualization.displaySize, ...
-%                         this.visualization.anisotropyFactor, ...
-%                         'oneColor', [0.5, 0, 0], imType);
+
                     imType = 'rgb';
                 end
             else
@@ -1200,6 +1200,8 @@ classdef Viewer < handle
 
             ds = this.visualization.displaySize;
 
+            %% Post-processing of the planes 
+            
             % Resize the images
             planes.resize( ...
                 this.visualization.anisotropyFactor, ...
@@ -1219,7 +1221,7 @@ classdef Viewer < handle
 
             end
             
-            % Show the image
+            %% Show the image
 %             set(this.Display, 'cdata', showImage);
 %             tic
             set(this.DisplayXY, 'cdata', planes.XY);
