@@ -2,6 +2,7 @@ classdef OverlaySpecifier
     
     properties
         
+        visible
         invert
         overlayType
         colors

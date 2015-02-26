@@ -1,20 +1,29 @@
 % This class inherits image data properties and functions.
 % The basic idea is that the stored image can be a continuous image as in
-% ImageData, or itself a cell array of ImageData objects:
-%   OverlayData.dataStructure = 'multiple'
-% For this to be handled correctly, this class provides space to add 
-% additional functions or properties.
+% ImageData, or itself a cell array of linear index positions 
+% (this.dataStructure = 'listed'):
+%   
+% this.image = { {a1, a2, ... , an}, {b1, b2, ... , bn}, ... , {m1, m2, ... , mn} }
 %
-% Note: Especially when using the multiple data structure it is recommended
-% to use the setProperties function or the constructor to set Properties 
-% (including image data). Direct usage of properties might cause unexpected 
-% behaviour.
+% where each group a ... m represents a component of the same label. 
+% If the flag 'overlaySpec.randomizeColors' is set to false
+% 'overlaySpec.colors' can be a cell of the form
 %
+% this.overlaySpec.colors = { {a_r, a_g, a_b}, ... , {m_r, m_g, mb} }
+%
+% where x_r, x_g, x_b are the red, green, and blue color component of the
+% corresponding group x. 
+%
+% Do we need something like this?
+% this.index = [ a_minX, a_maxX, a_minY, a_maxY, a_minZ, a_maxZ ; ...
+%                ... ; ...
+%                m_minX, ... , m_maxZ]
 classdef OverlayData < ImageData
     
     properties
         
-        dataStructure   % 'multiple' or 'classic'
+        dataStructure   % 'listed' or 'classic'
+        overlaySpec
         
     end
     
@@ -63,6 +72,9 @@ classdef OverlayData < ImageData
             %   handle = OverlayData(___, 'overlaySpec', overlaySpec)
             %   handle = OverlayData(___, 'totalImageSize', totalImageSize)
             
+            % Defaults
+            this.dataStructure = 'classic';
+            
             % Check input
             if ~isempty(varargin)
                 i = 0;
@@ -106,38 +118,49 @@ classdef OverlayData < ImageData
                     elseif strcmp(varargin{i}, 'totalImageSize')
                         this.totalImageSize = varargin{i+1};
                         i = i+1;
+                    elseif strcmp(varargin{i}, 'dataStructure')
+                        this.dataStructure = varargin{i+1};
+                        i = i+1;
                     end
                     
                 end
                 
             end
             
-            if isa(this.image, 'ImageData')
-                this.dataStructure = 'multiple';
+%             addlistener(this, 'image', 'PostSet', @this.image_postSet_cb);
+
+            if strcmp(this.dataStructure, 'listed')
+                
                 this.cubeRange = [];
                 this.cubeSize = [];
                 this.bufferType = 'whole';
-                this.sourceType = [];
-                this.copyPropertiesToSubObjects();
+                
             else
-                this.dataStructure = 'classic';
+                
             end
-
+            
         end
         
     end
     
-    methods (Access = private)
-        
-        function copyPropertiesToSubObjects(this)
+    methods (Access = protected)
+
+        function image_postSet_fcn(this)
             
-            if ~strcmp(this.dataStructure, 'multiple')
-                return;
+            % The original function did not work for the new data structure
+            if strcmp(this.dataStructure, 'listed')
+                
+            else
+                if ~isempty(this.image)
+
+                    this.totalImageSize = ...
+                        [size(this.image, 1), size(this.image, 2), size(this.image, 3)] ...
+                        .* this.cubeSize;
+
+                end
             end
             
-            for i = 1:length(this.image)
-                this.image{i}.anisotropic = this.anisotropic;
-            end
+            this.OnImageChanged();
             
         end
         

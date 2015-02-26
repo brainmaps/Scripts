@@ -13,7 +13,6 @@ classdef ImageData < handle
         sourceType      % 'cubed', 'stack', 'matFile'
         position        % [x, y, z]
         varName         % Name of the variable within a .mat file
-        overlaySpec     % overlaySpecifier
     end
     
     properties (SetAccess = public, GetAccess = public)
@@ -94,7 +93,6 @@ classdef ImageData < handle
             dat.anisotropic = [];
             dat.position = [];
             dat.cubeMap = [];
-            dat.overlaySpec = [];
             
             % Check input
             if ~isempty(varargin)
@@ -132,9 +130,6 @@ classdef ImageData < handle
                         i = i+1;
                     elseif strcmp(varargin{i}, 'position')
                         dat.position = varargin{i+1};
-                        i = i+1;
-                    elseif strcmp(varargin{i}, 'overlaySpec')
-                        dat.overlaySpec = varargin{i+1};
                         i = i+1;
                     end
                     
@@ -366,7 +361,7 @@ classdef ImageData < handle
     end
     
     % Event functions
-    methods (Access = private)
+    methods (Access = protected)
         
         function OnImageChanged(this)
             
@@ -379,6 +374,11 @@ classdef ImageData < handle
     methods (Access = protected)
         
         function image_postSet_cb(this, src, evnt)
+            
+            this.image_postSet_fcn();
+            
+        end
+        function image_postSet_fcn(this)
             
             if ~isempty(this.image)
                 

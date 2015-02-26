@@ -500,10 +500,22 @@ classdef Viewer < handle
 
         %% MainWindow callbacks
         function this_closeRequestFcn(this, ~, ~)
+            
+            % Clear all functions with persistent variables
+%             clear this.OnImageDataNumberChanged
+%             clear this.image_postSet_cb
+%             clear this.OnOverlayDataNumberChanged
+%             clear this.overlay_postSet_cb
+%             
+%             clear this.image
+            
+            clear functions
+            
             delete(this.Figure);
-            delete(this.image(:));
+%             delete(this.image(:));
 %             delete(this.visualization);
             delete(this);
+            clear this
         end
         function this_resizeFcn(MainWindow, hObject, ~)
         
@@ -654,21 +666,26 @@ classdef Viewer < handle
         end
         function this_windowButtonUpFcn(this, ~, ~)
             
-            switch this.userInput.mouseEvent.downOn
-                case 'xy'
-                    pos = round(get(this.AxesDisplayXY, 'CurrentPoint'));
-                case 'xz'
-                    pos = round(get(this.AxesDisplayXZ, 'CurrentPoint'));
-                case 'zy'
-                    pos = round(get(this.AxesDisplayZY, 'CurrentPoint'));
+            if ~isempty(this.userInput.mouseEvent.downOn)
+                    
+                switch this.userInput.mouseEvent.downOn
+                    case 'xy'
+                        pos = round(get(this.AxesDisplayXY, 'CurrentPoint'));
+                    case 'xz'
+                        pos = round(get(this.AxesDisplayXZ, 'CurrentPoint'));
+                    case 'zy'
+                        pos = round(get(this.AxesDisplayZY, 'CurrentPoint'));
+                end
+
+                switch this.userInput.mouseEvent.keySpecifier
+                    case 'normal'
+                        this.OnDisplayMouseUpLeft(this.userInput.mouseEvent.downOn, pos(2, 1:2));
+                    case 'alt'
+                        this.OnDisplayMouseUpRight(this.userInput.mouseEvent.downOn, pos(2, 1:2));                    
+                end
+                
             end
             
-            switch this.userInput.mouseEvent.keySpecifier
-                case 'normal'
-                    this.OnDisplayMouseUpLeft(this.userInput.mouseEvent.downOn, pos(2, 1:2));
-                case 'alt'
-                    this.OnDisplayMouseUpRight(this.userInput.mouseEvent.downOn, pos(2, 1:2));                    
-            end
             this.userInput.mouseEvent.downOn = [];
             this.userInput.mouseEvent.downAt = [];
             
@@ -1496,8 +1513,8 @@ classdef Viewer < handle
         function success = loadOverlayFromCubedData(this)
             
             % Add entry to the overlays
-            this.overlay{length(this.overlay) + 1} ...
-                = OverlayData( ...
+            this.overlay = [this.overlay, ...
+                { OverlayData( ...
                     'anisotropic', this.image{1}.anisotropic, ...
                     'dataType', 'single', ...
                     'bufferType', 'cubed', ...
@@ -1506,7 +1523,7 @@ classdef Viewer < handle
                     'position', [0, 0, 0], ...
                     'cubeSize', [128,128,128], ...
                     'name', ['Overlay' num2str(length(this.overlay)+1)], ...
-                    'cubeRange', {[0 3], [0 3], [0 3]} );
+                    'cubeRange', {[0 3], [0 3], [0 3]} ) }];
                 
             % Load the image
             success = this.overlay{end}.loadDataDlg();
