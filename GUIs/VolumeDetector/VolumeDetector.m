@@ -93,7 +93,7 @@ classdef VolumeDetector < Viewer
             % Write a new object into the overlay
             linInd = this.zeroBasedSub2Ind(this.overlay{1}.totalImageSize, imagePosition);
             this.overlay{1}.image = [ this.overlay{1}.image, ...
-                {{linInd}} ];
+                {linInd} ];
             
         end
         function displayMouseUpRight_cb(this, ~, evnt)

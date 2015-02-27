@@ -7,13 +7,10 @@
 %
 % NOTES FOR DEVELOPMENT
 %
-%   Upon construction an object of class Data is initialized with a set of
-%   default properties. 
-%
 %   For correct image display with respect to anisotropy the property
 %   anisotropyFactor found in the visualization class is used. This enables
 %   the display to be adjusted if the image is already loaded. The correct
-%   anisotropy factors remain stored within the image object (class Data).
+%   anisotropy factors remain stored within the image object (class ImageData).
 
 classdef Viewer < handle
     

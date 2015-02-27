@@ -97,7 +97,63 @@ classdef DisplayPlanes < handle
             this.ZY(1:2, :, 3) = 1;
             this.ZY(end-1:end, :, 3) = 1;
              
-       end
+        end
+       
+        function [gridXY, gridXZ, gridZY] = createIndexGrids(this, imSize, position)
+            %   imSize: Size of the image data on which the display grids are
+            %       based
+            %   position: Current position within the image data
+            
+            os = imSize;
+            
+            sizeX = size(this.XY, 2);
+            sizeY = size(this.XY, 1);
+            sizeZ = size(this.XZ, 1);
+            minPosition = position - round([sizeX, sizeY, sizeZ] / 2);
+            maxPosition = position + round([sizeX, sizeY, sizeZ] / 2);
+            minPosition(minPosition<0) = 0;
+            
+            %       For xy
+            [g1, g2, g3] = meshgrid( ...
+                (minPosition(1)*os(2)):os(2):(maxPosition(1)*os(2)), ...
+                minPosition(2):maxPosition(2), ...
+                (position(3))*os(1)*os(2));
+            
+            gridXY = g1+g2+g3+1;
+            
+%             disp('XY:');
+%             g1(1:3, 1:3)
+%             g2(1:3, 1:3)
+%             g3(1:3, 1:3)
+%             gridXY(1:3, 1:3)
+            
+            %       For xz
+            [g1, g2, g3] = meshgrid( ...
+                (minPosition(1)*os(2)):os(2):(maxPosition(1)*os(2)), ...
+                (minPosition(3)*os(1)*os(2)):(os(1)*os(2)):(maxPosition(3)*os(1)*os(2)), ...
+                position(2));
+            
+            gridXZ = g1+g2+g3+1;
+%             disp('XZ:');
+%             g1(1:3, 1:3)
+%             g2(1:3, 1:3)
+%             g3(1:3, 1:3)
+%             gridXZ(1:3, 1:3)
+            
+            %       For zy
+            [g1, g2, g3] = meshgrid( ...
+                (minPosition(3)*os(2)*os(1)):(os(2)*os(1)):(maxPosition(3)*os(2)*os(1)), ...
+                minPosition(2):maxPosition(2), ...
+                (position(1))*os(2));
+            
+            gridZY = g1+g2+g3+1;
+%             disp('ZY:');
+%             g1(1:3, 1:3)
+%             g2(1:3, 1:3)
+%             g3(1:3, 1:3)
+%             gridZY(1:3, 1:3)
+            
+        end
         
     end
     
