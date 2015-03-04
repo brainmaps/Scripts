@@ -2,8 +2,11 @@
 % navigation of volumetric image data.
 %
 % DEPENDENCIES
-%   Load the following path:
+%   Load the following paths:
 %       .../Functions/v1/
+%       .../Viewer/v1
+%       .../Viewer/v1/classes
+%   
 %
 % NOTES FOR DEVELOPMENT
 %
