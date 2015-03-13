@@ -128,6 +128,7 @@ classdef Viewer < handle
 %         windowSize
         initialWindowPosition
         userInput = UserInput;
+        debug = false;
     end
     
     % Default values

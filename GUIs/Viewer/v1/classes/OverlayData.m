@@ -48,6 +48,15 @@ classdef OverlayData < ImageData
     
     methods (Access = public)
         
+        function addObject(this, positions)
+            % Function is for listed data type only!
+            %
+            %   positions: array of linear coordinates
+            
+            
+            
+        end
+        
         function addOverlay(this, image, position, overlaySpec)
             
             if ~strcmp(this.dataStructure, 'multiple')
@@ -178,7 +187,7 @@ classdef OverlayData < ImageData
             
             %% For inherited data types the original function is called
             if ~strcmp(this.dataStructure, 'listed')
-                createDisplayPlanes@ImageData(planes, vis, type, imType);
+                [planes] = createDisplayPlanes@ImageData(planes, vis, type, imType);
                 return;
             end
                 
@@ -203,10 +212,65 @@ classdef OverlayData < ImageData
             op = this.position;
             os = this.totalImageSize;
             
+            planes = this.createDisplayPlanesOfListed(planes, {gXY, gXZ, gZY});
             
             % <<<
 
         end
+        
+        function planes = createDisplayPlanesOfListed(this, planes, indexGrids)
+            
+            gridXY = indexGrids{1};
+            gridXZ = indexGrids{2};
+            gridZY = indexGrids{3};
+            clear indexGrids
+            
+            indices = this.image;
+            
+            tic
+            for i = 1:length(indices)
+                for j = 1:length(indices{i})
+                    
+                    if ~isempty(find(gridXY == indices{i}(j), 1))
+
+                        planes.XY(gridXY == indices{i}(j)) = 1;
+                        
+                    end
+                    
+                    if ~isempty(find(gridXZ == indices{i}(j), 1))
+
+                        planes.XZ(gridXZ == indices{i}(j)) = 1;
+                        
+                    end
+
+                    if ~isempty(find(gridZY == indices{i}(j), 1))
+
+                        planes.ZY(gridZY == indices{i}(j)) = 1;
+                        
+                    end
+
+                end
+            end
+            toc
+            
+%             tic
+%             t = cellfun(@(x) arrayfun(@(v) ~isempty(find(gridXY == v, 1)), x), indices, 'uniformoutput', false);
+%             toc
+%             tic
+%             for i = 1:length(t)
+%                 
+%                 if max(t{i}) == 1
+%                     
+%                     for j = 1:length(indices{i})
+%                         planes.XY(gridXY == indices{i}(j)) = 1;
+%                     end
+%                     
+%                 end
+%                 
+%             end
+%             toc
+        end
+       
         
     end
     

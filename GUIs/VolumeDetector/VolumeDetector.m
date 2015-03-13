@@ -72,12 +72,18 @@ classdef VolumeDetector < Viewer
         
         function displayMouseDownLeft_cb(this, ~, evnt)
             
-            evnt
+            % DEBUG
+            if this.debug
+                evnt
+            end
             
         end
         function displayMouseDownRight_cb(this, ~, evnt)
             
-            evnt
+            % DEBUG
+            if this.debug
+                evnt
+            end
             
         end
         function displayMouseUpLeft_cb(this, ~, evnt)
@@ -92,13 +98,28 @@ classdef VolumeDetector < Viewer
             
             % Write a new object into the overlay
             linInd = this.zeroBasedSub2Ind(this.overlay{1}.totalImageSize, imagePosition);
+            
+            [~, relSphere, ~] = jh_getNeighborhood3D(0, 5, ...
+                'imgSize', this.overlay{1}.totalImageSize, ...
+                'anisotropic', this.visualization.anisotropyFactor);
+            linSphere = linInd+relSphere
+            
             this.overlay{1}.image = [ this.overlay{1}.image, ...
-                {linInd} ];
+                {linSphere} ];
+            
+            % DEBUG
+            if this.debug
+                this.overlay{1}.image
+                evnt.position
+            end
             
         end
         function displayMouseUpRight_cb(this, ~, evnt)
             
-            evnt
+            % DEBUG
+            if this.debug
+                evnt
+            end
             
         end
         
@@ -117,10 +138,10 @@ classdef VolumeDetector < Viewer
                     iPos(1:2) = iPos(1:2) + dPos - round(dSize/2);
                 case 'xz'
                     iPos(1) = iPos(1) + dPos(1) - round(dSize/2);
-                    iPos(3) = iPos(3) + dPos(2) - round(dSize/2);
+                    iPos(3) = iPos(3) + round((dPos(2) - round(dSize/2)) / this.visualization.anisotropyFactor(3));
                 case 'zy'
                     iPos(2) = iPos(2) + dPos(2) - round(dSize/2);
-                    iPos(3) = iPos(3) + dPos(1) - round(dSize/2);
+                    iPos(3) = iPos(3) + round((dPos(1) - round(dSize/2)) / this.visualization.anisotropyFactor(3));
             end
             
         end

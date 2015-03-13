@@ -98,7 +98,7 @@ classdef DisplayPlanes < handle
             this.ZY(end-1:end, :, 3) = 1;
              
         end
-       
+        
         function [gridXY, gridXZ, gridZY] = createIndexGrids(this, imSize, position)
             %   imSize: Size of the image data on which the display grids are
             %       based
@@ -109,9 +109,12 @@ classdef DisplayPlanes < handle
             sizeX = size(this.XY, 2);
             sizeY = size(this.XY, 1);
             sizeZ = size(this.XZ, 1);
-            minPosition = position - round([sizeX, sizeY, sizeZ] / 2);
+            minPositionVisible = position - (round([sizeX, sizeY, sizeZ] / 2)-1);
             maxPosition = position + round([sizeX, sizeY, sizeZ] / 2);
+            minPosition = minPositionVisible;
             minPosition(minPosition<0) = 0;
+            offset = -minPositionVisible;
+            offset(offset < 0) = 0;
             
             %       For xy
             [g1, g2, g3] = meshgrid( ...
@@ -119,7 +122,9 @@ classdef DisplayPlanes < handle
                 minPosition(2):maxPosition(2), ...
                 (position(3))*os(1)*os(2));
             
-            gridXY = g1+g2+g3+1;
+            tGridXY = g1+g2+g3+1;
+            gridXY = zeros(sizeY, sizeX);
+            gridXY(offset(2)+1:end, offset(1)+1:end) = tGridXY;
             
 %             disp('XY:');
 %             g1(1:3, 1:3)
@@ -133,12 +138,15 @@ classdef DisplayPlanes < handle
                 (minPosition(3)*os(1)*os(2)):(os(1)*os(2)):(maxPosition(3)*os(1)*os(2)), ...
                 position(2));
             
-            gridXZ = g1+g2+g3+1;
+            tGridXZ = g1+g2+g3+1;
+            gridXZ = zeros(sizeZ, sizeX);
+            gridXZ(offset(3)+1:end, offset(1)+1:end) = tGridXZ;
 %             disp('XZ:');
 %             g1(1:3, 1:3)
 %             g2(1:3, 1:3)
 %             g3(1:3, 1:3)
-%             gridXZ(1:3, 1:3)
+%             tGridXZ(1:3, 1:3)
+%             gridXZ(end-3:end, end-3:end)
             
             %       For zy
             [g1, g2, g3] = meshgrid( ...
@@ -146,7 +154,9 @@ classdef DisplayPlanes < handle
                 minPosition(2):maxPosition(2), ...
                 (position(1))*os(2));
             
-            gridZY = g1+g2+g3+1;
+            tGridZY = g1+g2+g3+1;
+            gridZY = zeros(sizeY, sizeZ);
+            gridZY(offset(2)+1:end, offset(3)+1:end) = tGridZY;
 %             disp('ZY:');
 %             g1(1:3, 1:3)
 %             g2(1:3, 1:3)
