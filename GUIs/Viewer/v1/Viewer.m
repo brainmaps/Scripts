@@ -163,6 +163,8 @@ classdef Viewer < handle
         DisplayMouseUpLeft
         DisplayMouseUpRight
         
+        AfterCreation
+        
     end
     
    
@@ -175,6 +177,7 @@ classdef Viewer < handle
             %   h = Viewer();
             %   h = Viewer(___, 'name', name)
             %   h = Viewer(___, 'image', { imageProps } )
+            %   h = Viewer(___, 'overlay', { overlayProps } )
             %
             % INPUT
             %   name: Name of the window
@@ -188,6 +191,7 @@ classdef Viewer < handle
             % Set defaults
             MainWindow.windowName = 'Viewer';
             addImage = [];
+            addOverlay = [];
                 
             % Check input
             i = 0;
@@ -201,6 +205,14 @@ classdef Viewer < handle
                 if strcmp(varargin{i}, 'image')
                     try
                         addImage = varargin{i+1};
+                    catch
+                        return;
+                    end
+                    i = i+1;
+                end
+                if strcmp(varargin{i}, 'overlay')
+                    try
+                        addOverlay = varargin{i+1};
                     catch
                         return;
                     end
@@ -443,6 +455,9 @@ classdef Viewer < handle
             if ~isempty(addImage)
                 MainWindow.image{1} = ImageData(addImage{:});
             end
+            if ~isempty(addOverlay)
+                MainWindow.overlay{1} = OverlayData(addOverlay{:});
+            end
             MainWindow.this_afterCreationFcn();
             
         end
@@ -575,6 +590,9 @@ classdef Viewer < handle
                 this.createImageDisplay();
                 this.displayCurrentPosition('set');
             end
+            
+            % Notify the event
+            this.OnAfterCreation();
             
         end
         function this_keyPressFcn(this, ~, eventdata)
@@ -954,7 +972,6 @@ classdef Viewer < handle
                 addlistener(this.image{end}, 'ImageChanged', @this.image_imageChanged_cb);
             end
             
-            noImData = length(this.image);
             
             % Add image to menu
             this.m_settings_images_image(length(this.image)) = uimenu(this.m_settings_images, ...
@@ -975,7 +992,10 @@ classdef Viewer < handle
             this.activateObjects();
             
             % Call the event
-            notify(this, 'ImageDataNumberChanged');
+            notify(this, 'ImageDataNumberChanged', ImageDataNoChangeEventData(noImData, length(this.image)));
+            
+            noImData = length(this.image);
+            
         end
         
         function OnImageDataChanged(this)
@@ -1092,9 +1112,15 @@ classdef Viewer < handle
             
         end
         
+        function OnAfterCreation(this)
+            
+            notify(this, 'AfterCreation');
+            
+        end
+        
     end
     
-    methods (Access = private)
+    methods (Access = protected)
         %% Other functions
         
         function throwException(~, EX, title)
@@ -1177,7 +1203,7 @@ classdef Viewer < handle
 
             % Draw the background image
             [planes] = this.image{im}.createDisplayPlanes ...
-                (planes, this.visualization, 'replace', 'gray');
+                (planes, this.visualization, 'gray', 'replace');
 
             %% Let's get to the overlays
             
@@ -1194,10 +1220,11 @@ classdef Viewer < handle
 
                     imType = 'rgb';
                 end
-            else
-                % Convert to RGB
-                planes.toRGB();
             end
+            
+            % Convert to RGB
+            planes.toRGB();
+            
 
             ds = this.visualization.displaySize;
 

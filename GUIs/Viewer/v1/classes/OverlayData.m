@@ -23,6 +23,7 @@
 % this.index = [ a_minX, a_maxX, a_minY, a_maxY, a_minZ, a_maxZ ; ...
 %                ... ; ...
 %                m_minX, ... , m_maxZ]
+%   Yes! simply use the position property and make it multidimensional!
 %
 %
 classdef OverlayData < ImageData
@@ -30,7 +31,6 @@ classdef OverlayData < ImageData
     properties
         
         dataStructure   % 'listed' or 'classic'
-        overlaySpec
         
     end
     
@@ -48,12 +48,21 @@ classdef OverlayData < ImageData
     
     methods (Access = public)
         
-        function addObject(this, positions)
+        function addObject(this, position, matrix, color)
             % Function is for listed data type only!
             %
-            %   positions: array of linear coordinates
+            %   position: [ minX, minY, minZ, maxX, maxY, maxZ ]
+            %   matrix: 
+            %       array form, e.g., matrix = [ 0,1,0; 1,1,1; 0,1,0 ]
+            %       linear form, e.g., matrix = [ 2, 4, 5, 6, 8 ]
+            %       For the matrixed form the matrix has to be of the
+            %           same dimensionality as spanned by position, in the
+            %           linear form the indices are based on a matrix of
+            %           size position
             
-            
+            this.image = [this.image, {matrix}];
+            this.position = [this.position; position];
+            this.overlaySpec.colors = [this.overlaySpec.colors, {color}];
             
         end
         
@@ -178,7 +187,7 @@ classdef OverlayData < ImageData
         end
         
         function [planes] = createDisplayPlanes ...
-                (this, planes, vis, type, imType)
+                (this, planes, vis, imType)
             
             %% Put functionalities for all datatypes here:
             % >>>
@@ -187,36 +196,68 @@ classdef OverlayData < ImageData
             
             %% For inherited data types the original function is called
             if ~strcmp(this.dataStructure, 'listed')
-                [planes] = createDisplayPlanes@ImageData(planes, vis, type, imType);
+                [planes] = createDisplayPlanes@ImageData(planes, vis, this.overlaySpec.overlayType, imType);
                 return;
             end
                 
             %% Put functionalities for only the listed data type here:
             % >>>
             
-            % Step1: find out if the image is present in the currently
-            % displayed section
+            % Return if the image is empty
+            if isempty(this.image), return, end
             
-            %   Create list of displayed linear indices with respect to the
-            %   overlay data
+            planes.toRGB();
             
-            [gXY, gXZ, gZY] = planes.createIndexGrids(this.totalImageSize, vis.currentPosition-this.position);
-%             gXY, gXZ, gZY
+            % Iterate over all objects
+            for i = 1:length(this.image)
+                if ~isempty(this.image{i})
+                    pos = this.position(i,:);
+                    if max(max(max(this.image{i}))) ~= 1
+                        im = zeros(pos(4:6) - pos(1:3) + 1);
+                        im(this.image{i}) = 1;
+                    else
+                        im = this.image{i};
+                    end
+                    [planes.XY, planes.XZ, planes.ZY, ~] = jh_overlayObject( ...
+                        planes.XY, planes.XZ, planes.ZY, ...    images
+                        vis.roundedPosition, ...                position
+                        pos(1:3), ...                           object position
+                        im, ...                                 object matrix
+                        vis.displaySize, ...                    display size
+                        vis.anisotropyFactor, ...               anisotropy factor
+                        this.overlaySpec.overlayType, ...       overlay specifier
+                        this.overlaySpec.colors{i}, 'rgb');
+                end
+            end
             
-            %   Compare visible position indices with potentially visible
-            %   objects within the overlay data
-            
-            cp = vis.currentPosition;
-            ds = vis.displaySize;
-            af = vis.anisotropyFactor;
-            op = this.position;
-            os = this.totalImageSize;
-            
-            planes = this.createDisplayPlanesOfListed(planes, {gXY, gXZ, gZY});
+%             % Step1: find out if the image is present in the currently
+%             % displayed section
+%             % And for this we now have the position property
+%             
+%             
+%             
+%             
+%             %   Create list of displayed linear indices with respect to the
+%             %   overlay data
+%             
+%             [gXY, gXZ, gZY] = planes.createIndexGrids(this.totalImageSize, vis.currentPosition-this.position);
+% %             gXY, gXZ, gZY
+%             
+%             %   Compare visible position indices with potentially visible
+%             %   objects within the overlay data
+%             
+%             cp = vis.currentPosition;
+%             ds = vis.displaySize;
+%             af = vis.anisotropyFactor;
+%             op = this.position;
+%             os = this.totalImageSize;
+%             
+%             planes = this.createDisplayPlanesOfListed(planes, {gXY, gXZ, gZY});
             
             % <<<
 
         end
+        
         
         function planes = createDisplayPlanesOfListed(this, planes, indexGrids)
             
@@ -227,7 +268,7 @@ classdef OverlayData < ImageData
             
             indices = this.image;
             
-            tic
+%             tic
             for i = 1:length(indices)
                 for j = 1:length(indices{i})
                     
@@ -251,7 +292,7 @@ classdef OverlayData < ImageData
 
                 end
             end
-            toc
+%             toc
             
 %             tic
 %             t = cellfun(@(x) arrayfun(@(v) ~isempty(find(gridXY == v, 1)), x), indices, 'uniformoutput', false);
@@ -282,7 +323,7 @@ classdef OverlayData < ImageData
             if strcmp(this.dataStructure, 'listed')
                 
             else
-                if ~isempty(this.image)
+                if ~isempty(this.image) && ~isempty(this.cubeSize)
 
                     this.totalImageSize = ...
                         [size(this.image, 1), size(this.image, 2), size(this.image, 3)] ...

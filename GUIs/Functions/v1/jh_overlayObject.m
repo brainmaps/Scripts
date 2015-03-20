@@ -2,7 +2,7 @@ function [imageXY, imageXZ, imageYZ, visibility] = jh_overlayObject( ...
         imageXY, imageXZ, imageYZ, ...
         position, objectPosition, objectMatrix, ...
         displaySize, anisotropic, ...
-        overlaySpec, osValue, imType)
+        overlaySpec, osValue, imType, color)
 
     visibility = false;
     n = round(displaySize ./ anisotropic / 2) *2;
@@ -13,10 +13,13 @@ function [imageXY, imageXZ, imageYZ, visibility] = jh_overlayObject( ...
     kernelP = cell(1, 3);
     pad = zeros(1, 3);
     for i = 1:3
+        if i == 1, j=2; end
+        if i == 2, j=1; end
+        if i == 3, j=3; end
         kernelP{i} = (-(n(i)/2) + 1 : (n(i)/2)) + position(i);
 %             kernelP{i} = kernel{i} + position(i);
         pad(i) = n(i) - max(kernelP{i});
-        kernelP{i} = kernelP{i}(kernelP{i} >= 1 & kernelP{i} <= size(objectMatrix, i));
+        kernelP{i} = kernelP{i}(kernelP{i} >= 1 & kernelP{i} <= size(objectMatrix, j));
     end
 
     if strcmp(overlaySpec, 'replace')

@@ -24,9 +24,9 @@ classdef DisplayPlanes < handle
         
         function toRGB(this)
             
-            this.XY = jh_convertGray2RGB(this.XY);
-            this.XZ = jh_convertGray2RGB(this.XZ);
-            this.ZY = jh_convertGray2RGB(this.ZY);
+            if size(this.XY, 3) == 1, this.XY = jh_convertGray2RGB(this.XY); end
+            if size(this.XZ, 3) == 1, this.XZ = jh_convertGray2RGB(this.XZ); end
+            if size(this.ZY, 3) == 1, this.ZY = jh_convertGray2RGB(this.ZY); end
             
         end
         
