@@ -212,7 +212,7 @@ classdef OverlayData < ImageData
             for i = 1:length(this.image)
                 if ~isempty(this.image{i})
                     pos = this.position(i,:);
-                    if max(max(max(this.image{i}))) ~= 1
+                    if size(this.image{i}, 2) == 1
                         im = zeros(pos(4:6) - pos(1:3) + 1);
                         im(this.image{i}) = 1;
                     else

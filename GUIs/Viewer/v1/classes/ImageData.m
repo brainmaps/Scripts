@@ -2,7 +2,7 @@ classdef ImageData < handle
     
     properties (SetObservable)
         name
-        cubeRange       % [x, y, z]
+        cubeRange       % [x1, x2], [y1, y2], [z1, z2]
         image
         anisotropic     % [x, y, z]
         cubeSize        % [x, y, z]
@@ -410,6 +410,44 @@ classdef ImageData < handle
             
         end
         
+        % This function returns a subimage specified by position and size
+        function subIm = getSubImage(this, position, sze)
+            % INPUT
+            %   position: vector [x, y, z]
+            %   sze: vector [width, height, depth]
+            
+            subIm = [];
+            
+            if strcmp(this.sourceType, 'cubed')
+                
+                % Get cube range
+                minCube = floor(position ./ this.cubeSize) ...
+                    + [this.cubeRange{1}(1), this.cubeRange{2}(1), this.cubeRange{3}(1)];
+                maxCube = floor((position + sze) ./ this.cubeSize) ...
+                    + [this.cubeRange{1}(1), this.cubeRange{2}(1), this.cubeRange{3}(1)];
+
+                % Load the cube range as complete image
+                im = jh_openCubeRange( ...
+                    this.sourceFolder, '', ...
+                    'cubeSize', this.cubeSize, ...
+                    'range', ...
+                        [minCube(1), maxCube(1)], ...
+                        [minCube(2), maxCube(2)], ...
+                        [minCube(3), maxCube(3)], ...
+                    'dataType', this.dataType, ...
+                    'outputType', 'one', ...
+                    'fileType', 'auto') / 255;
+
+                % Extract the necessary subimage
+                minCubeRel = floor(position ./ this.cubeSize);
+                from = position - minCubeRel.*this.cubeSize + 1;
+                to = position+sze - minCubeRel.*this.cubeSize + 1;
+                subIm = im(from(2):to(2), from(1):to(1), from(3):to(3));
+                
+            end
+            
+        end
+        
         % This function is exclusively necessary for cubed image data where
         % only parts of the whole data set are loaded into memory. 
         % Use this function to load the desired cubes into memory.
@@ -473,7 +511,7 @@ classdef ImageData < handle
                             
                             this.image{y+1, x+1, z+1} = jh_openCubeRange( ...
                                 this.sourceFolder, '', ...
-                                'cubeSize', [128 128 128], ...
+                                'cubeSize', this.cubeSize, ...
                                 'range', 'oneCube', [xR, yR, zR], ...
                                 'dataType', this.dataType, ...
                                 'outputType', 'one', ...
