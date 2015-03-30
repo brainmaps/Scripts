@@ -213,7 +213,8 @@ classdef OverlayData < ImageData
                 if ~isempty(this.image{i})
                     pos = this.position(i,:);
                     if size(this.image{i}, 2) == 1
-                        im = zeros(pos(4:6) - pos(1:3) + 1);
+%                         im = zeros(pos(4:6) - pos(1:3) + 1);
+                        im = zeros(pos(5)-pos(2)+1, pos(4)-pos(1)+1, pos(6)-pos(3)+1);
                         im(this.image{i}) = 1;
                     else
                         im = this.image{i};

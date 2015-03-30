@@ -227,7 +227,8 @@ elseif strcmp(outputType, 'cubed')
                         case 'auto'
                             files = [dir([path 'x' xs filesep 'y' ys filesep 'z' zs filesep '*.raw']) ...
                                 dir([path 'x' xs filesep 'y' ys filesep 'z' zs filesep '*.tiff']) ...
-                                dir([path 'x' xs filesep 'y' ys filesep 'z' zs filesep '*.tif'])];
+                                dir([path 'x' xs filesep 'y' ys filesep 'z' zs filesep '*.tif']) ...
+                                dir([path 'x' xs filesep 'y' ys filesep 'z' zs filesep '*.TIFF'])];
                     end
                     fileNames = {files.name};
                     thisName = fileNames{1};

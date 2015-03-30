@@ -109,7 +109,7 @@ if complete
     % rangeX
     %   Get list of folders in the main folder (define the range for x)
     d = dir(path);
-    isub = [d(:).isdir]; %# returns logical vector
+    isub = [d(:).isdir]; % # returns logical vector
     nameFoldsX = {d(isub).name}';
     nameFoldsX(ismember(nameFoldsX,{'.','..'})) = [];
     %   Get range
@@ -117,7 +117,7 @@ if complete
     
     % rangeY
     d = dir([path, nameFoldsX{1}]);
-    isub = [d(:).isdir]; %# returns logical vector
+    isub = [d(:).isdir]; % # returns logical vector
     nameFoldsY = {d(isub).name}';
     nameFoldsY(ismember(nameFoldsY,{'.','..'})) = [];
     %   Get range
@@ -125,7 +125,7 @@ if complete
     
     % rangeZ
     d = dir([path, nameFoldsX{1}, filesep, nameFoldsY{1}]);
-    isub = [d(:).isdir]; %# returns logical vector
+    isub = [d(:).isdir]; % # returns logical vector
     nameFoldsZ = {d(isub).name}';
     nameFoldsZ(ismember(nameFoldsZ,{'.','..'})) = [];
     %   Get range

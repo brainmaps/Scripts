@@ -1,7 +1,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-path = 'D:\Julian\Synapse segmentation\Datasets\Ivo\';
-name = 'Ivo';
+path = 'D:\Julian\Datasets\MembranePrediction_j0126_1024\';
+name = 'MembranePrediction_j0126_1024';
 % imageName = 'test';
 cubeSize = [128 128 128]; % [r c d]
 padValue = 0;
@@ -85,7 +85,7 @@ for x = 1:nc(2)
             cz = 1+cubeSize(3)*(z-1);
             
             saveImage =  paddedImage(cy:cy+cubeSize(2)-1, cx:cx+cubeSize(1)-1, cz:cz+cubeSize(3)-1);
-            saveImageAsTiff3D(saveImage, [path 'cubed_' name '\' px '\' py '\' pz '\' name '_' px '_' py '_' pz '.TIFF'], 'gray');
+            jh_saveImageAsTiff3D(saveImage, [path 'cubed_' name '\' px '\' py '\' pz '\' name '_' px '_' py '_' pz '.TIFF'], 'gray');
             clear saveImage;
 %             cubedImage{x, y, z} =
             
