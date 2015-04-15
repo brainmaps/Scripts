@@ -91,7 +91,6 @@ function [imageXY, imageXZ, imageYZ, visibility] = jh_overlayObject( ...
                 imType);
             visibility = true;
         end
-        
     end
     
 end

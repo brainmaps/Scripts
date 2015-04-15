@@ -103,6 +103,8 @@ classdef Viewer < handle
                         m_settings_overlays_overlay_bufferType_cubed
                     % <
                     m_settings_overlays_overlay_visible
+                    % - 
+                    m_settings_overlays_overlay_export
                     % -
                     m_settings_overlays_overlay_close
                 % <
@@ -919,6 +921,28 @@ classdef Viewer < handle
             this.displayCurrentPosition('');
             
         end
+        function m_settings_overlays_overlay_visible_cb(this, src, ~)
+            
+            % Get overlay id
+            ID = find(this.m_settings_overlays_overlay_visible == src);
+            
+            if this.overlay{ID}.visible
+                this.overlay{ID}.visible = false;
+                set(this.m_settings_overlays_overlay_visible, 'checked', 'off');
+            else
+                this.overlay{ID}.visible = true;
+                set(this.m_settings_overlays_overlay_visible, 'checked', 'on');
+            end
+
+        end
+        function m_settings_overlays_overlay_export_cb(this, src, ~)
+            
+            % Get overlay id
+            ID = this.m_settings_overlays_overlay_export == src;
+            
+            this.overlay{ID}.exportImageDlg();
+            
+        end
         
         %% Property callbacks
         
@@ -1039,8 +1063,12 @@ classdef Viewer < handle
                 'Callback', @this.m_settings_overlays_overlay_bufferType_whole_callback);
             this.m_settings_overlays_overlay_visible(length(this.overlay)) = uimenu(this.m_settings_overlays_overlay(length(this.overlay)), ...
                 'Label', 'Visible', ...
-                'Callback', @this.m_settings_overlays_overlay_visible_callback, ...
-                'Enable', 'off');
+                'Callback', @this.m_settings_overlays_overlay_visible_cb, ...
+                'Checked', 'on');
+            this.m_settings_overlays_overlay_export(length(this.overlay)) = uimenu(this.m_settings_overlays_overlay(length(this.overlay)), ...
+                'Label', 'Export', ...
+                'Callback', @this.m_settings_overlays_overlay_export_cb, ...
+                'Separator', 'on');
             this.m_settings_overlays_overlay_close(length(this.overlay)) = uimenu(this.m_settings_overlays_overlay(length(this.overlay)), ...
                 'Label', 'Close', ...
                 'Separator', 'on', ...
@@ -1210,7 +1238,7 @@ classdef Viewer < handle
             if ~isempty(this.overlay)
                 % Add overlays
                 imType = 'gray';
-                for i = 1:length(this.overlay)
+                for i = length(this.overlay):-1:1
                     
                     [planes, ~] = this.overlay{i}.overlayObject( ...
                         planes, ...

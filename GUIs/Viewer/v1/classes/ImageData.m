@@ -3,7 +3,7 @@ classdef ImageData < handle
     properties (SetObservable)
         name
         cubeRange       % [x1, x2], [y1, y2], [z1, z2]
-        image
+        image           % cell of cubes
         anisotropic     % [x, y, z]
         cubeSize        % [x, y, z]
         totalImageSize  % [x, y, z]
@@ -203,6 +203,33 @@ classdef ImageData < handle
             
         end
         
+        function status = exportImageDlg(this)
+            % OUTPUT
+            %   status == 1: success
+            %   status == 0: failed
+            %   status == -1: in development
+            
+            % Dialog input
+            [file, path] = uiputfile({'*.tiff', 'TIFF image'});
+            
+            % Export to determined destination
+            status = this.exportImage([path file]);
+            
+        end
+        function status = exportImage(this, path)
+            % OUTPUT
+            %   status == 1: success
+            %   status == 0: failed
+            %   status == -1: in development
+            
+            switch this.bufferType
+                case 'cubed'
+                    status = this.exportImage_cubed(path);
+                case 'whole'
+                    status = this.exportImage_whole(path);
+            end
+            
+        end
         
         %% Other
 
@@ -340,6 +367,9 @@ classdef ImageData < handle
                 screenSize)
             
             visibility = false;
+            
+            if ~this.visible, return; end
+            
             
             % Get the current displayed planes if the image is cubed
             if strcmp(this.bufferType, 'cubed')
@@ -543,8 +573,57 @@ classdef ImageData < handle
 
         end
         
+        
     end
     
+    methods (Access = protected)
+        
+        %% FileIO
+        
+        function status = exportImage_cubed(this, path)
+            status = -1;
+        end
+        function status = exportImage_whole(this, path)
+            
+            try
+                %Build image
+                im = this.concatenateCubes();
+                
+                %Save image 
+                jh_saveImageAsTiff3D(im, path, 'gray');
+                
+                %Success!
+                status = 1;
+            catch
+                % WTF!
+                status = 0;
+            end
+
+        end
+        
+        %% Data processing
+        function concCubes = concatenateCubes(this)
+            
+            concCubes = zeros(this.totalImageSize);
+            
+            for x = 0:size(this.image, 1)-1
+                for y = 0:size(this.image, 2)-1
+                    for z = 0:size(this.image, 3)-1
+                        
+                        concCubes( ...
+                            y*this.cubeSize(2)+1 : (y+1)*this.cubeSize(2), ...
+                            x*this.cubeSize(1)+1 : (x+1)*this.cubeSize(1), ...
+                            z*this.cubeSize(3)+1 : (z+1)*this.cubeSize(3)) ...
+                            = this.image{y+1, x+1, z+1};
+                        
+                    end
+                end
+            end
+            
+        end
+        
+    end
+            
     methods (Access = private)
         %% FileIO
         
@@ -865,9 +944,11 @@ classdef ImageData < handle
             status = 1;
             
         end
+        
                 
         
     end
+    
     
     methods (Static)
         
