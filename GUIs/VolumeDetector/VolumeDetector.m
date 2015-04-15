@@ -14,6 +14,8 @@ classdef VolumeDetector < Viewer
             m_tools_nextBasin
             m_tools_previousBasin
             m_tools_markAsComplete
+            % -
+            m_tools_undoLastSeed
             % <
         
     end
@@ -27,7 +29,11 @@ classdef VolumeDetector < Viewer
         colorListRandom         % Used to distinguish all WS basin; used for activeBasin == 0
         colorListActiveWS       % Overlay to display only active WS basin
         basinsComplete
-        
+        undoLastSeed_seedMatrix             % Structure to store previous settings
+        undoLastSeed_seedImages
+        undoLastSeed_basinOverlay
+        undoLastSeed_seedPositions    
+    
     end
     
     methods
@@ -70,7 +76,13 @@ classdef VolumeDetector < Viewer
                 MainWindow.m_tools_markAsComplete = uimenu(MainWindow.m_tools, ...
                     'Label', 'Mark as complete (C)', ...
                     'Callback', @MainWindow.m_tools_markAsComplete_cb);
-                
+                % -
+                MainWindow.m_tools_undoLastSeed = uimenu(MainWindow.m_tools, ...
+                    'Label', 'Undo last seed', ...
+                    'Callback', @MainWindow.m_tools_undoLastSeed_cb, ...
+                    'Accelerator', 'z', ...
+                    'Separator', 'on', ...
+                    'Enable', 'off');
             % <
             
             % New items
@@ -176,7 +188,7 @@ classdef VolumeDetector < Viewer
             % Add Gaussian
 %             subIm = 0.90*subIm + 0.1*jh_dip_gaussianFilter3D(subIm, 5, 3, [1 1 3]);
             % Add distance transform
-            subIm = 0.99*subIm + 0.01*(1-jh_normalizeMatrix(bwdist(subIm)));
+            subIm = 0.90*subIm + 0.10*(1-jh_normalizeMatrix(bwdist(subIm)));
             
             this.calculationRangeImage = subIm;
             
@@ -241,6 +253,18 @@ classdef VolumeDetector < Viewer
             end
             
             this.displayCurrentPosition('set');
+            
+        end
+        function m_tools_undoLastSeed_cb(this, ~, ~)
+            
+            set(this.m_tools_undoLastSeed, 'Enable', 'off');
+            
+            this.watershedSeeds = this.undoLastSeed_seedMatrix;
+            this.overlay{1}.image = this.undoLastSeed_seedImages;
+            this.overlay{1}.position = this.undoLastSeed_seedPositions;
+            this.overlay{3} = this.undoLastSeed_basinOverlay;
+            
+            this.displayCurrentPosition('');
             
         end
         
@@ -312,7 +336,7 @@ classdef VolumeDetector < Viewer
                         'anisotropic', this.image{1}.anisotropic, ...
                         'position', [], ...
                         'overlaySpec', OverlaySpecifier( ...
-                            false, 'oneColor', [], false), ...
+                            false, 'add', [], false), ...
                         'totalImageSize', this.image{1}.totalImageSize, ...
                         'dataStructure', 'listed' );
                     
@@ -324,7 +348,7 @@ classdef VolumeDetector < Viewer
                         'anisotropic', this.image{1}.anisotropic, ...
                         'position', [0,0,0,0,0,0], ...
                         'overlaySpec', OverlaySpecifier( ...
-                            false, 'oneColor', {[1 1 0]}, false), ...
+                            false, 'add', {[1 1 0]}, false), ...
                         'totalImageSize', this.image{1}.totalImageSize, ...
                         'dataStructure', 'listed' );
                     
@@ -373,6 +397,17 @@ classdef VolumeDetector < Viewer
         
         function placeSeed(this, imagePosition, calculateWS)
             
+            % Store temporary to make undo possible
+            this.undoLastSeed_seedMatrix = this.watershedSeeds;
+            this.undoLastSeed_seedImages = this.overlay{1}.image;
+            this.undoLastSeed_seedPositions = this.overlay{1}.position;
+            if length(this.overlay) > 2
+                this.undoLastSeed_basinOverlay = this.overlay{3};
+            else
+                this.undoLastSeed_basinOverlay = [];
+            end
+            set(this.m_tools_undoLastSeed, 'Enable', 'on');
+            
             % Return if outside calculation range
             if ~this.insideCalculationRange(imagePosition), return; end
             
@@ -393,12 +428,13 @@ classdef VolumeDetector < Viewer
 %                 {linSphere} ];
             
             setPosition = [imagePosition - ((size(nh)-1)/2), imagePosition + ((size(nh)-1)/2)];
-            this.overlay{1}.addObject(setPosition, nh, [1 0 0]);
+            this.overlay{1}.addObject(setPosition, nh, [1 0 0], 'add');
             
             if isempty(calculateWS), calculateWS = false; end
             if calculateWS
                 this.calculateWS()
             end
+            
             
             this.displayCurrentPosition('');
             % DEBUG
@@ -485,7 +521,7 @@ classdef VolumeDetector < Viewer
                         ims{i} = zeros(size(ws));
                         ims{i}(ws == i) = 1;
                         [offset, width, ims{i}] = this.reduceMatrix(ims{i});
-                        positions(i, :) = [this.calculationRange(1, :)+offset, this.calculationRange(2, :)+width];
+                        positions(i, :) = [this.calculationRange(1, :)+offset, offset+width-1];
                     end
                 end
                 
@@ -510,7 +546,7 @@ classdef VolumeDetector < Viewer
                     'anisotropic', this.image{1}.anisotropic, ...
                     'position', positions, ...
                     'overlaySpec', OverlaySpecifier( ...
-                        false, 'oneColor', colorList, false), ...
+                        false, 'colorize', colorList, false), ...
                     'totalImageSize', this.calculationRange(2, :)-this.calculationRange(1, :)+1, ...
                     'dataStructure', 'listed' );
                 
@@ -520,93 +556,6 @@ classdef VolumeDetector < Viewer
             clear t
 
             toc 
-            
-            return;
-            
-            % This is the old version:
-            
-            tic 
-            
-            % Create seed matrix
-            
-            %   Initialize matrix
-            seedMatrix = zeros( ...
-                this.calculationRange(2,2) - this.calculationRange(1,2)+1, ...
-                this.calculationRange(2,1) - this.calculationRange(1,1)+1, ...
-                this.calculationRange(2,3) - this.calculationRange(1,3)+1, 'int32');
-
-            % This is not needed anymore since no such seeds can be placed
-%             %   Get seedpoints within calc range
-%             allSeeds = cellfun(@(x) x - this.calculationRange(1,:), this.watershedSeeds, 'uniformoutput', false);
-%             for i = 1:length(allSeeds)
-%                 if min(allSeeds{i}) >= 0
-%                     add = true;
-%                     if allSeeds{i}(1) > size(seedMatrix, 2), add = false; end
-%                     if allSeeds{i}(2) > size(seedMatrix, 1), add = false; end
-%                     if allSeeds{i}(3) > size(seedMatrix, 3), add = false; end
-%                     if add
-% %                         seeds{c} = allSeeds{i};
-%                         seedMatrix(sub2ind(size(seedMatrix), allSeeds{i}(2)+1, allSeeds{i}(1)+1, allSeeds{i}(3)+1)) = 1;
-%                     end
-%                 end
-%             end
-            % Put the seed points
-            allSeeds = cellfun(@(x) x - this.calculationRange(1,:), this.watershedSeeds, 'uniformoutput', false);
-            for i = 1:length(allSeeds)
-                if min(allSeeds{i}) >= 0
-                    seedMatrix(sub2ind(size(seedMatrix), allSeeds{i}(2)+1, allSeeds{i}(1)+1, allSeeds{i}(3)+1)) = i;
-                end
-            end
-                
-            % Get the image section
-            subIm = this.calculationRangeImage;
-
-            % Perform watershed
-%             ws = im2mat(jh_dip_waterseed(int32(bwlabeln(seedMatrix)), subIm, 2, 0, 0));
-            ws = im2mat(jh_dip_waterseed(seedMatrix, subIm, 2, 0, 0));
-
-            ims = cell(1, max(max(max(ws))));
-            for i = 1:max(max(max(ws)))
-                ims{i} = zeros(size(ws));
-                ims{i}(ws == i) = 1;
-            end
-            
-            positions = [this.calculationRange(1, :), this.calculationRange(2, :)];
-            positions = positions(ones(max(max(max(ws))),1),:);
-            
-%             colors = [];
-%             hues = double(randperm(max(max(max(ws))))) / double(max(max(max(ws))));
-%             for i = 1:max(max(max(ws)))
-% %                 colors{length(colors)+1} = hsv2rgb([double(i)/double(max(max(max(ws)))), 1, 0.7]);
-%                 colors{length(colors)+1} = hsv2rgb([hues(i), 1, 0.7]);
-%             end
-            
-            this.extendRandomColorList();
-            if this.activeBasin > 0
-                this.colorListActiveWS = this.createActiveBasinColorList(this.activeBasin);
-                colorList = this.colorListActiveWS;
-            else
-                colorList = this.colorListRandom;
-            end
-            
-            this.overlay{3} = ...
-                OverlayData( ...
-                    'image', ims, ...
-                    'name', 'Watershed', ...
-                    'dataType', 'int32', ...
-                    'anisotropic', this.image{1}.anisotropic, ...
-                    'position', positions, ...
-                    'overlaySpec', OverlaySpecifier( ...
-                        false, 'oneColor', colorList, false), ...
-                    'totalImageSize', this.calculationRange(2, :)-this.calculationRange(1, :)+1, ...
-                    'dataStructure', 'listed' );
-                
-            t = this.basinsComplete;
-            this.basinsComplete = zeros(length(this.watershedSeeds), 1);
-            this.basinsComplete(1:length(t)) = t;
-            clear t
-            
-            toc
             
         end
         
