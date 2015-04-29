@@ -45,6 +45,11 @@ if strcmp(typeOut,'same')
     end
 end
 
+if isempty(M)
+    nM = [];
+    return;
+end
+
 %%
 
 minM = M;
