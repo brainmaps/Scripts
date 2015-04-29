@@ -1,0 +1,26 @@
+function status = initDipImage()
+
+% Try to initialize the Dip library
+try
+    
+    warning off
+    try
+        addpath('C:\Program Files\DIPimage 2.5.1\common\dipimage');
+    catch
+    end
+    warning on
+    evalc('dip_initialise;');
+    
+    fprintf('Dip library found and loaded successfully.\n\n');
+    
+    status = 1;
+    
+catch
+    
+    close(handles.figMain);
+    
+    fprintf('\nERROR: Dip library not found. \n');
+    fprintf('    Consider loading Dip library manually before starting ModelClassify3D.\n\n');
+    return
+    
+end
