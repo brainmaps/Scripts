@@ -8,18 +8,31 @@
 %   Cut data into sections: 
 %       Specify the number of sections the data set is cut into
 %       Specify the amount of overlap in voxels
+%           Overlap specifies the amount of voxels added from the
+%           neighboring cube. Note that since this is performes all around 
+%           each cube the actual overlap is twice the specified size.
+%
+% Dependencies:
+%
+%   Specify path below:
+%       DIPimage library
+%
+%   Load to workspace:
+%       .../Functions/v1
+%       pwd/functions
+%       pwd/sa_functions
 
 %% Inputs go here: ########################################################
 % #########################################################################
 
 %% Select cubes [from to] 
 rangeX = [1 2];
-rangeY = [1 1];
+rangeY = [1 2];
 rangeZ = [1 1];
 cubeSize = [128, 128, 128];
 
 %% Cut data into sections
-noOfSections = [2 1 1]; % [x y z]
+noOfSections = [1 1 1]; % [x y z]
 overlap = [24 24 8];    % [x y z] voxels
 
 %% Specify locations
@@ -31,54 +44,126 @@ dataFolder = 'D:\Julian\Synapse segmentation\Datasets\20130410.membrane.striatum
 saveFolder = 'D:\Julian\Develop\Matlab\150429.ModelClassifyForLargeDatasets\Results';
 
 %% Name of the run
-nameRun = '150429_vc_MembraneStriatum_x1-1_y1-1_z1-1_best';
+nameRun = '150430.2.vc_MembraneStriatum.x1-2.y1-2.z1-1.140814_2DWS_x1y2z0_4';
+
+%% Stuff to save
+% Specify which calculated matrices will be saved from jh_synapseSeg3D:
+%   Possible values:
+%       'result', 'WS', 'features', 'classification', and 'postProcessing'
+%       See jh_synapseSeg3D for explanation
+%   Note that especially the features take up a significant amount of disc
+%       space (no of features*imSize*2 in single precision)
+saveAlso = {};
+% saveAlso = {'result', 'WS', 'features', 'classification', 'postProcessing'};
+% Save overlay matrix
+saveOverlays = true;
+
+%% DIPimage library
+dipPath = 'C:\Program Files\DIPimage 2.5.1\';
 
 % #########################################################################
 %% ########################################################################
 
 %%
 
+fprintf('\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n')
+fprintf(  '>>> StandAlone script: ModelClassify3D >>>>>>>>>>>>>>>>>>>>>\n')
+fprintf(  '>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n')
+fprintf('\nVersion: 0.14.1\n')
+fprintf(  'By Julian Hennies, MPI Heidelberg\n')
+fprintf('\nFor non-commercial use only\n')
+fprintf('\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n')
+
+%%
+
+fprintf('\nLoading model file...\n')
+disp(['    ' modelFile])
+
 load(modelFile);
 
-mkdir([saveFolder filesep nameRun]);
+fprintf(  '    ... Done!\n')
+fprintf(  'Creating target directory...\n');
+disp(['    ' saveFolder filesep nameRun])
+
+if exist([saveFolder filesep nameRun], 'dir') == 7
+    fprintf('    ... Already exists!\n');
+else
+    mkdir([saveFolder filesep nameRun]);
+    fprintf(  '    ... Done!\n');
+end
 
 %% Create settings structure
 
-settings.range = [rangeX; rangeY; rangeZ];
-settings.noOfSections = noOfSections;
-settings.overlap = overlap;
-settings.cubeSize = cubeSize;
-settings.data = saveStuff.data;
-settings.pWS = saveStuff.pWS;
-settings.pFeatures = saveStuff.pFeatures;
-settings.pClassification = saveStuff.pClassification;
-settings.pPP = saveStuff.pPP;
-settings.saveFolder = saveFolder;
-settings.nameRun = nameRun;
-settings.dataFolder = dataFolder;
+fprintf(  'Setting up settings structure...')
+
+try
+    settings.range = [rangeX; rangeY; rangeZ];
+    settings.noOfSections = noOfSections;
+    settings.overlap = overlap;
+    settings.cubeSize = cubeSize;
+    settings.data = saveStuff.data;
+    settings.pWS = saveStuff.pWS;
+    settings.pFeatures = saveStuff.pFeatures;
+    settings.pClassification = saveStuff.pClassification;
+    settings.pPP = saveStuff.pPP;
+    settings.saveFolder = saveFolder;
+    settings.nameRun = nameRun;
+    settings.dataFolder = dataFolder;
+    settings.saveAlso = saveAlso;
+    settings.saveOverlays = saveOverlays;
+    fprintf(' Done!\n')
+catch
+    fprintf(' Failed!\n')
+    fprintf('\nError: Input variable(s) missing.\n')
+    fprintf('\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n')
+    return
+end
+
+fprintf(  'Saving settings...')
+
+currentDir = pwd;
+cd([saveFolder filesep nameRun])
+
+save([nameRun '.mat'], 'settings');
+
+cd(currentDir)
+
+fprintf(  ' Done!\n')
 
 
 %%
 
+fprintf(  'Initializing DIPimage library... ')
 % Try to initialize the Dip library
 % Abort if it fails
-if ~initDipImage('C:\Program Files\DIPimage 2.5.1\')
+if ~initDipImage(dipPath)
+    fprintf('\nError: DIPimage Library not found.\n')
+    fprintf('\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n')
     return
 end
 
 %% Do the calculation for each section
 
-for x = 1:noOfSections(1)
-    for y = 1:noOfSections(2)
-        for z = 1:noOfSections(3)
-                        
-            calculateCurrentSection(x, y, z, settings)
+fprintf('\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n')
+fprintf(  '____________________________________________________________')
+
+for x = 0:noOfSections(1)-1
+    for y = 0:noOfSections(2)-1
+        for z = 0:noOfSections(3)-1
+            
+            fprintf(jh_buildString('\nx = ', x, ', y = ', y, ', z = ', z, '\n')) 
+            
+            calculateCurrentSection(x, y, z, settings);
+            
+            fprintf('____________________________________________________________')
             
         end
     end
 end
 
+fprintf('\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n')
+fprintf(  '<<< StandAlone script: ModelClassify3D <<<<<<<<<<<<<<<<<<<<<\n')
+fprintf(  '<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n')
 
-    
     
     

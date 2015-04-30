@@ -333,9 +333,17 @@ end
 result = postProcessing.result.matrixed{1};
 clear postProcessing
 
+% For saving
+if ~isempty(toSave)
+    for i = 1:length(toSave)
+        if strcmp(toSave{i}, 'result')
+            save([folder filesep nameRun filesep 'result'], 'result');
+        end
+    end
+end
 
-elapsedTime = toc;
-fprintf('Done in %.2G seconds.\n', elapsedTime);
+% elapsedTime = toc;
+% fprintf('Done in %.2G seconds.\n', elapsedTime);
 
 
 elapsedTime = toc(tmrValue);

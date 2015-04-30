@@ -15,7 +15,7 @@ try
     warning on
     evalc('dip_initialise;');
     
-    fprintf('Dip library found and loaded successfully.\n\n');
+    fprintf('Dip library found and loaded successfully.\n');
     
     status = 1;
     
@@ -23,7 +23,7 @@ catch
     
     close(handles.figMain);
     
-    fprintf('\nERROR: Dip library not found. \n\n');
+    fprintf('\nERROR: Dip library not found. \n');
     
     status = 0;
     

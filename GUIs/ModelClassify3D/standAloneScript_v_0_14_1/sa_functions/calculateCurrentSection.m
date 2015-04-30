@@ -15,43 +15,59 @@ function calculateCurrentSection(x, y, z, settings)
 %       .saveFolder
 %       .nameRun
 %       .dataFolder
+%       .saveAlso
+
 
 %% Load necessary cubes and create image
 
-data = settings.data;
-data.image = loadCurrentImageSection(x, y, z, settings);
+fprintf('\nLoading current image section...')
 
+data = settings.data;
+[data.image, bc1, bc2] = loadCurrentImageSection(x, y, z, settings);
+
+fprintf(' Done!\n');
 
 %% Calculate result for current section
 
-result.result = jh_synapseSeg3D( ...
+fprintf('Calculating result for current section...\n')
+
+path = jh_buildString( ...
+    settings.saveFolder, filesep, ...
+    settings.nameRun, filesep, ...
+    'x', [x,4], filesep, ...
+    'y', [y,4], filesep, ...
+    'z', [z,4], filesep); 
+
+if exist([path, settings.nameRun], 'dir') ~= 7
+    mkdir([path, settings.nameRun]);
+end
+
+% result = zeros(size(data.image));
+result = jh_synapseSeg3D( ...
     data, settings.pWS, settings.pFeatures, settings.pClassification, settings.pPP, ...
-    'save', {'WS', 'features', 'classification', 'postProcessing'}, ...
-    settings.saveFolder, settings.nameRun, ...
+    'save', settings.saveAlso, path, settings.nameRun, ...
     'prefType', 'single', ...
     'anisotropic', data.anisotropic);
 
+
+%% Crop result
+
+fprintf('Cropping result...')
+resultC = cropResult(result, settings, bc1, bc2);
+fprintf(' Done!\n')
 % im = jh_normalizeMatrix(data.image);
 % figure, imshow(im(:,:,100));
-% figure, imagesc(result.result(:,:,100));
+% figure, imagesc(result(:,:,100));
 
 
 %% Save result for current section
 
-% result.modelFile = modelFile;
-% result.loadFolder = loadFolder;
-% result.saveFolder = saveFolder;
-% result.nameRun = nameRun;
-% save([saveFolder filesep nameRun filesep 'result'], 'result');
-% 
-% saveImageAsTiff3D( ...
-%     jh_overlayLabels( ...
-%         jh_normalizeMatrix(data.image), ...
-%         result.result, ...
-%         'type', 'colorize', ...
-%         'range', [0 .33], ...
-%         'gray', 'randomizeColors'), ...
-%     [saveFolder filesep nameRun filesep 'result_Overlay.TIFF'], ...
-%     'rgb');
+fprintf('Saving results for current section...')
+if settings.saveOverlays
+    saveResult(x, y, z, settings, resultC, result, data.image);
+else
+    saveResult(x, y, z, settings, resultC, [], []);
+end
+fprintf(' Done!\n')
 
 end

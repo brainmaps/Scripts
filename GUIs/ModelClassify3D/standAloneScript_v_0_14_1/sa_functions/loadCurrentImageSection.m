@@ -1,4 +1,4 @@
-function sec = loadCurrentImageSection(x, y, z, settings)
+function [sec, bc1, bc2] = loadCurrentImageSection(x, y, z, settings)
 
 %% Determine the image which needs to be loaded
 
@@ -6,12 +6,12 @@ function sec = loadCurrentImageSection(x, y, z, settings)
 cr = settings.range;
 noS = settings.noOfSections;
 olp = settings.overlap;
-coord = [x;y;z];
+coord = [x+1;y+1;z+1];
 
 % Size of the section [in cubes] w/o overlap
 s = ( cr(:,2) - cr(:,1) + 1 ) ./ noS';
 % Total section size including overlap (max one cube)
-ts = s+(sign(olp)');
+ts = s+(sign(olp)')*2;
 % Position of the first cube for each dimension w/o considering overlap
 p = (coord-1).*s + cr(:,1);
 % And now with overlap
@@ -19,9 +19,18 @@ tp = p-(sign(olp)');
 
 sectionToLoad = [tp, tp+ts-1];
 
+% sectionToLoad
+
 % Border correction
-bc = find(sectionToLoad(:,1) < cr(:,1));
-sectionToLoad(bc) = cr(bc);
+bc1 = find(sectionToLoad(:,1) < cr(:,1));
+bc2 = find(sectionToLoad(:,2) > cr(:,2));
+sectionToLoad(bc1) = cr(bc1);
+sectionToLoad(bc2, 2) = cr(bc2, 2);
+
+% bc1
+% bc2
+% 
+% sectionToLoad
 
 %% Load this image
 
@@ -34,10 +43,17 @@ im = jh_openCubeRange([settings.dataFolder, filesep], '', ...                   
 
 %% Crop everything not necessary 
 
-start = (settings.cubeSize') - (olp') + 1;
-start(bc) = 1;
+im_size = jh_size(im)';
 
-sec = im(start(2):end,start(1):end,start(3):end);
+start = (settings.cubeSize') - (olp') + 1;
+start(bc1) = 1;
+stop = (im_size + 1) - (settings.cubeSize') + (olp');
+stop(bc2) = im_size(bc2)+1;
+
+sec = im(start(2):stop(2),start(1):stop(1),start(3):stop(3));
+% 
+% start
+% stop
 
 
 end
