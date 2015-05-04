@@ -1,0 +1,30 @@
+function cube = loadcube(coordinates, basepath)
+%LOADCUBE Fetches knossos cube from coordinates [y, x, z] given a basepath (WITHOUT trailing filesep!). x, y, z >= 1  
+%   basepath defaults to
+%   C:\Users\nasim\Documents\MATLAB\Cubes\BOMAX-512px-cube_mag1-output-labeled_binary
+%   when omitted. 
+%   [tested and working]
+
+if ~exist('basepath', 'var')
+    basepath = 'C:\Users\nasim\Documents\MATLAB\Cubes\BOMAX-512px-cube_mag1-output-labeled_binary';
+end
+
+%to make coordinates compatible with file structure
+coordinates = coordinates - 1;
+
+%record pwd and change directory to load data
+wherewasi = pwd;
+access_string = [filesep, 'x', num2str(coordinates(2), '%04d'), filesep, 'y', num2str(coordinates(1), '%04d'), filesep, 'z', num2str(coordinates(3), '%04d')];
+cd([basepath, access_string]);
+
+%load data
+load('mitomap_output', 'cube_output');
+
+%back to business
+cd(wherewasi);
+cube = cube_output;
+
+end
+
+
+
