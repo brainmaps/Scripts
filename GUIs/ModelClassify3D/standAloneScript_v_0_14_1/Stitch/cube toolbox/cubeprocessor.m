@@ -12,7 +12,7 @@ function cubeprocessor(frompath, topath, applyfunction, extrarguments, onwhat, l
 %   [NOT TESTED] Cuboid ready
 %   [WARNING] Ignoring limiter would cause the function to process the
 %             entire dataset. For larger datasets, this might take a while.
-
+%(CC) Nasim Rahaman. Github: github.com/nasimrahaman
 
 
 %default arguments
@@ -93,6 +93,7 @@ for J = 1:numY
             wherewasi = pwd;
             cd([topath, access_string]);
             save mitomap_output cube_output
+            jh_saveImageAsTiff3D(uint16(cube_output), 'cube_output.tiff', 'gray', 'bitsPerSample', 16);
             cd(wherewasi)
             savt = toc;
             

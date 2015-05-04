@@ -6,6 +6,7 @@ function conngraph = graphmaker(basepath, enumpath, limiter)
 %                        This would cause the function to process all cubes
 %                        with y coordinates between a & b, x coordinates
 %                        between c & d and z coordinates between e & f. 
+%(CC) Nasim Rahaman. Github: github.com/nasimrahaman
 
 
 %retrieve dataset size
@@ -15,6 +16,9 @@ function conngraph = graphmaker(basepath, enumpath, limiter)
 if ~exist('limiter', 'var')
     limiter = [1 1 1; numY, numX, numZ];
 end
+
+%clear global variables named glc
+clearvars -global glc
 
 disp('Enumerating Labels...')
 %label and globally enumerate labels

@@ -5,6 +5,7 @@ function boundarytuple = boundaryanalysis(basepath, limiter)
 %   [ARGUMENTS] basepath: path to globally enumerated labeled directory
 %               limiter: limits processing to a sub-supercube. See
 %               cubeprocessor for more on this.
+%(CC) Nasim Rahaman. Github: github.com/nasimrahaman
 
 
 %fetch supercube size
@@ -64,7 +65,7 @@ for J = 1:numY
                     if any(m1vec)
                        %don't look back
                        continue
-                       %----------------
+                       %-------DBG---------
                        %go forward: true
                        if m1vec(1) == 1
                            %load the correct edge
@@ -125,8 +126,13 @@ for J = 1:numY
                            
                            nextedge = reshape(nextcube(1,:,:), [sizx, sizx]);
                            
-                           %make tuple
+                           %make sub-list of tuples
                            subtup = [currcubeedge(:), nextedge(:)];
+                           %clean up subtup (get rid of duplicates and
+                           %redundant tuples)
+                           subtup = subtup(all(subtup, 2), :);
+                           subtup = unique(subtup, 'rows');
+                           %add to master list
                            tuplist = [tuplist; subtup];
                            
                        end
@@ -140,9 +146,14 @@ for J = 1:numY
                            %unique results to ccid.
                            
                            nextedge = reshape(nextcube(:,1,:), [sizx, sizx]);
-                           
-                           %make tuple
+                                             
+                           %make sub-list of tuples
                            subtup = [currcubeedge(:), nextedge(:)];
+                           %clean up subtup (get rid of duplicates and
+                           %redundant tuples)
+                           subtup = subtup(all(subtup, 2), :);
+                           subtup = unique(subtup, 'rows');
+                           %add to master list
                            tuplist = [tuplist; subtup];
                            
                        end
@@ -157,8 +168,13 @@ for J = 1:numY
                            
                            nextedge = reshape(nextcube(:,:,1), [sizx, sizx]);
                            
-                           %make tuple
+                           %make sub-list of tuples
                            subtup = [currcubeedge(:), nextedge(:)];
+                           %clean up subtup (get rid of duplicates and
+                           %redundant tuples)
+                           subtup = subtup(all(subtup, 2), :);
+                           subtup = unique(subtup, 'rows');
+                           %add to master list
                            tuplist = [tuplist; subtup];
                            
                        end
@@ -166,8 +182,7 @@ for J = 1:numY
                 end
             end
             
-            %clean up tuplist for next pass. Saves memory at the cost of
-            %cpu time. 
+            %clean up tuplist for next pass (probably not necessary).   
             %begin by getting rid of all rows with zeros
             tuplist = tuplist(all(tuplist, 2), :);
             %pick unique elements

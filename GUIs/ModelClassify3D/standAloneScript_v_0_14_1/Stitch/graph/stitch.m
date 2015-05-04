@@ -15,7 +15,8 @@ function stitch(frompath, topath, enumpath, limiter)
 %                 labels repeating over the entire dataset).
 %       limiter: (optional) limits the processing scope. Example: limiter = [2 2 2; 6
 %                6 6] would tell the program to only process cubes with
-%                coordinates [2 2 2] <= [i j k] <= [6 6 6].
+%                coordinates [2 2 2] <= [i j k] <= [6 6 6]. 
+%(CC) Nasim Rahaman. Github: github.com/nasimrahaman
 
 %defaults
 if ~exist('enumpath', 'var') || isequal(enumpath, '~')

@@ -1,6 +1,7 @@
 function outcube = consolidatelabels(cube, cgcc)
 %CONSOLIDATELABELS Consolidates all labels by loading the connected component
 %analysis on the connectivity graph and relabeling the argument cube accordingly. 
+%(CC) Nasim Rahaman. Github: github.com/nasimrahaman
 
 %relabeling
 %get uniques in cube

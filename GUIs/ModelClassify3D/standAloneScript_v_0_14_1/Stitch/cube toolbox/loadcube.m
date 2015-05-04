@@ -22,7 +22,6 @@ load('mitomap_output', 'cube_output');
 
 %back to business
 cd(wherewasi);
-
 cube = cube_output;
 
 end

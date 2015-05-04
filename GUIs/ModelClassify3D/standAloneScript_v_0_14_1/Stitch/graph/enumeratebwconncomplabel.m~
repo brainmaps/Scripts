@@ -1,34 +1,22 @@
-function enumlabcube = enumeratebwconncomplabel(cube, docdir)
+function enumlabcube = enumeratebwconncomplabel(cube)
 %ENUMERATEBWCONNCOMPLABEL Labels cubes, but no two labels (in an entire
 %Knossos directory) are repeated. May require the path to a doc directory
 %   Ready for use with cubeprocessor.
 
-%---BACKUP---
-% %defaults (hardwire for use with cubeprocessor)
-% if ~exist('docdir', 'var')
-%     docdirgiven = false;
-% else
-%     docdirgiven = true;
-% end
-% 
-% if docdirgiven
-%     %Saves a global label counter (glc) to a temporary file. Load that file if
-%     %it exists.
-%     try
-%         wherewasi = pwd;
-%         cd(docdir)
-%         load tempdat
-%         cd(wherewasi)
-%     catch
-%     end
-% end
-%---END---
 
-%check if glc is loaded. If not, initialize. 
-if ~exist('glc', 'var')
-    global glc; %#ok<TLEV>
-    glc = 0;
-end
+% %BUGFIX: exist() does not work with global variables. Workaround. 
+% if ~exist('glc', 'var')
+%     global glc; %#ok<TLEV>
+%     glc = 0;
+% end
+
+
+
+%relabel cubes to fit Julian's format
+%take measurements
+sizc = size(cube); 
+%calculate unique indices for relabelling
+[~,~,cube] = unique(cube); cube = reshape(cube - 1, sizc);  
 
 %update labels
 cube(~(cube == 0)) = cube(~(cube == 0)) + glc; 
@@ -38,11 +26,6 @@ cube(~(cube == 0)) = cube(~(cube == 0)) + glc;
 if max(cube(:)) ~= 0
     glc = max(cube(:));
 end
-
-%---BACKUP---
-% %save glc
-% save tempdat glc
-%---END---
 
 enumlabcube = cube;
 
