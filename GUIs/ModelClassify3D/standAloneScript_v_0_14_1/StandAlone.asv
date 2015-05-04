@@ -26,14 +26,14 @@
 % #########################################################################
 
 %% Select cubes [from to] 
-rangeX = [1 4];
+rangeX = [1 2];
 rangeY = [1 2];
-rangeZ = [1 2];
+rangeZ = [1 1];
 cubeSize = [128, 128, 128];
 
 %% Cut data into sections
-noOfSections = [2 1 1]; % [x y z]
-overlap = [48 48 16];    % [x y z] voxels
+noOfSections = [1 1 1]; % [x y z]
+overlap = [24 24 8];    % [x y z] voxels
 
 %% Specify locations
 % Model file
@@ -44,7 +44,7 @@ dataFolder = 'D:\Julian\Synapse segmentation\Datasets\20130410.membrane.striatum
 saveFolder = 'D:\Julian\Develop\Matlab\150429.ModelClassifyForLargeDatasets\Results';
 
 %% Name of the run
-nameRun = '150504.3.vc_MembraneStriatum.x1-2.y1-2.z1-1.140814_2DWS_x1y2z0_4';
+nameRun = '150430.2.vc_MembraneStriatum.x1-2.y1-2.z1-1.140814_2DWS_x1y2z0_4';
 
 %% Stuff to save
 % Specify which calculated matrices will be saved from jh_synapseSeg3D:
@@ -71,7 +71,6 @@ fprintf(  '>>> StandAlone script: ModelClassify3D >>>>>>>>>>>>>>>>>>>>>\n')
 fprintf(  '>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n')
 fprintf('\nVersion: 0.14.1\n')
 fprintf(  'By Julian Hennies, MPI Heidelberg\n')
-fprintf('\nStiching by Nasim Rahaman\n')
 fprintf('\nFor non-commercial use only\n')
 fprintf('\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n')
 
@@ -86,10 +85,10 @@ fprintf(  '    ... Done!\n')
 fprintf(  'Creating target directory...\n');
 disp(['    ' saveFolder filesep nameRun])
 
-if exist([saveFolder filesep nameRun filesep 'prediction'], 'dir') == 7
+if exist([saveFolder filesep nameRun], 'dir') == 7
     fprintf('    ... Already exists!\n');
 else
-    mkdir([saveFolder filesep nameRun filesep 'prediction']);
+    mkdir([saveFolder filesep nameRun]);
     fprintf(  '    ... Done!\n');
 end
 
@@ -107,8 +106,8 @@ try
     settings.pFeatures = saveStuff.pFeatures;
     settings.pClassification = saveStuff.pClassification;
     settings.pPP = saveStuff.pPP;
-    settings.saveFolder = [saveFolder filesep nameRun];
-    settings.nameRun = ['prediction'];
+    settings.saveFolder = saveFolder;
+    settings.nameRun = nameRun;
     settings.dataFolder = dataFolder;
     settings.saveAlso = saveAlso;
     settings.saveOverlays = saveOverlays;
@@ -123,7 +122,7 @@ end
 fprintf(  'Saving settings...')
 
 currentDir = pwd;
-cd([saveFolder filesep nameRun filesep 'prediction'])
+cd([saveFolder filesep nameRun])
 
 save([nameRun '.mat'], 'settings');
 
@@ -162,16 +161,7 @@ for x = 0:noOfSections(1)-1
     end
 end
 
-%% Perform stitching to get consistent labels
-
-fprintf('\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n')
-fprintf('\nStitching... \n\n')
-
-stitch([saveFolder filesep nameRun filesep 'prediction']);
-
-fprintf('\n    ... Done\n')
-
-%%
+%% Perform stitching to get consiste
 
 fprintf('\n<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n')
 fprintf(  '<<< StandAlone script: ModelClassify3D <<<<<<<<<<<<<<<<<<<<<\n')
