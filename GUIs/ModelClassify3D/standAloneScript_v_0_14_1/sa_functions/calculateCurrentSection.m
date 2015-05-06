@@ -23,9 +23,10 @@ function calculateCurrentSection(x, y, z, settings)
 fprintf('\nLoading current image section...')
 
 data = settings.data;
-[data.image, bc1, bc2] = loadCurrentImageSection(x, y, z, settings);
+[data.image, boundsRangeIdx] = loadCurrentImageSection(x, y, z, settings);
 
 fprintf(' Done!\n');
+
 
 %% Calculate result for current section
 
@@ -53,7 +54,7 @@ result = jh_synapseSeg3D( ...
 %% Crop result
 
 fprintf('Cropping result...')
-resultC = cropResult(result, settings, bc1, bc2);
+resultC = cropResult(result, settings, boundsRangeIdx);
 fprintf(' Done!\n')
 % im = jh_normalizeMatrix(data.image);
 % figure, imshow(im(:,:,100));

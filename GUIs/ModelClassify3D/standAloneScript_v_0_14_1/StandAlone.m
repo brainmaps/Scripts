@@ -6,11 +6,10 @@
 %
 %   Select cubes [from to]: Select the whole image that will be processed
 %   Cut data into sections: 
-%       Specify the number of sections the data set is cut into
-%       Specify the amount of overlap in voxels
-%           Overlap specifies the amount of voxels added from the
-%           neighboring cube. Note that since this is performes all around 
-%           each cube the actual overlap is twice the specified size.
+%       Specify the size of each section, overlap with the neighboring
+%       section and an offset.
+%       The offset should be either zero or (-overlap/2), otherwise
+%       errors may occur.
 %
 % Dependencies:
 %
@@ -27,13 +26,15 @@
 
 %% Select cubes [from to] 
 rangeX = [1 4];
-rangeY = [1 2];
-rangeZ = [1 2];
+rangeY = [1 4];
+rangeZ = [1 4];
 cubeSize = [128, 128, 128];
 
 %% Cut data into sections
-noOfSections = [2 1 1]; % [x y z]
+% noOfSections = [2 1 1]; % [x y z]
+secSize = [304 304 272]; % [x y z] voxels
 overlap = [48 48 16];    % [x y z] voxels
+offset = [-24 -24 -8];  % [x y z] voxels
 
 %% Specify locations
 % Model file
@@ -44,7 +45,7 @@ dataFolder = 'D:\Julian\Synapse segmentation\Datasets\20130410.membrane.striatum
 saveFolder = 'D:\Julian\Develop\Matlab\150429.ModelClassifyForLargeDatasets\Results';
 
 %% Name of the run
-nameRun = '150504.3.vc_MembraneStriatum.x1-2.y1-2.z1-1.140814_2DWS_x1y2z0_4';
+nameRun = '150506.3.vc_MembraneStriatum.x1-2.y1-2.z1-1.140814_2DWS_x1y2z0_4';
 
 %% Stuff to save
 % Specify which calculated matrices will be saved from jh_synapseSeg3D:
@@ -99,8 +100,10 @@ fprintf(  'Setting up settings structure...')
 
 try
     settings.range = [rangeX; rangeY; rangeZ];
-    settings.noOfSections = noOfSections;
+%     settings.noOfSections = noOfSections;
+    settings.secSize = secSize;
     settings.overlap = overlap;
+    settings.offset = offset;
     settings.cubeSize = cubeSize;
     settings.data = saveStuff.data;
     settings.pWS = saveStuff.pWS;
@@ -108,7 +111,7 @@ try
     settings.pClassification = saveStuff.pClassification;
     settings.pPP = saveStuff.pPP;
     settings.saveFolder = [saveFolder filesep nameRun];
-    settings.nameRun = ['prediction'];
+    settings.nameRun = 'prediction';
     settings.dataFolder = dataFolder;
     settings.saveAlso = saveAlso;
     settings.saveOverlays = saveOverlays;
@@ -146,21 +149,8 @@ end
 %% Do the calculation for each section
 
 fprintf('\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n')
-fprintf(  '____________________________________________________________')
 
-for x = 0:noOfSections(1)-1
-    for y = 0:noOfSections(2)-1
-        for z = 0:noOfSections(3)-1
-            
-            fprintf(jh_buildString('\nx = ', x, ', y = ', y, ', z = ', z, '\n')) 
-            
-            calculateCurrentSection(x, y, z, settings);
-            
-            fprintf('____________________________________________________________')
-            
-        end
-    end
-end
+calculateSections(settings);
 
 %% Perform stitching to get consistent labels
 
